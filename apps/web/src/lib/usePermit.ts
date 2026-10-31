@@ -23,10 +23,9 @@ export function mergeFrame(id: string, permit: PermitApplication | null, frame: 
 
 // The grant names the actor's loopback address, which only this page's own host can reach.
 function socketUrl(grant: string) {
-  const url = new URL(grant)
-  url.protocol = location.protocol === 'https:' ? 'wss:' : 'ws:'
-  url.host = location.host
-  return url.href
+  const { pathname, search } = new URL(grant)
+  const protocol = location.protocol === 'https:' ? 'wss:' : 'ws:'
+  return `${protocol}//${location.host}${pathname}${search}`
 }
 
 const MAX_RETRY_MS = 8_000
@@ -60,7 +59,7 @@ export function usePermit(id: string): Omit<Live, 'id'> {
       retry = setTimeout(connect, delay)
     }
 
-    // A proxy can hold a browser's socket open and never answer, so HTTP carries the record until a frame arrives.
+    // A network can block WebSockets, so HTTP carries the record until a frame arrives.
     async function read() {
       if (socketLive) return
       try {
