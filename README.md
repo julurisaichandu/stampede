@@ -2,6 +2,8 @@
 
 stampede runs the city's review before you submit.
 
+It has a screen for homeowners and a screen for officers. Homeowners check and fix their plans. Officers see the same file, with every check, agent message, and step of the review.
+
 | Live demo | Open it |
 | --- | --- |
 | Homeowner screen | [Start a new pre-review](https://5173-9b9e5da6-6585-4590-9fae-e3e78d5df75a.sandbox.superserve.ai) or [open a finished one](https://5173-9b9e5da6-6585-4590-9fae-e3e78d5df75a.sandbox.superserve.ai/permits/4b4bc7c6-34a8-40f1-b1c7-291e09b22072) |
