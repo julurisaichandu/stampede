@@ -128,7 +128,7 @@ function SheetBody({ permit, specimen, reading }: { permit: PermitApplication; s
       )}
 
       <p className="sheet-part">
-        <b>Part II</b> Deck, in your words
+        <b>Part II</b> Deck, from your plans or your words
       </p>
       <dl className="sheet-grid">
         {deckRows(deck).map((row) => (
@@ -142,7 +142,7 @@ function SheetBody({ permit, specimen, reading }: { permit: PermitApplication; s
       </dl>
 
       <footer className="sheet-foot">
-        <p>Filled in only from what you say and what the city’s records show. Nothing is guessed.</p>
+        <p>Filled in only from your plans, what you say and what the city’s records show. Nothing is guessed.</p>
         <div className="sheet-stamp-box">
           <span>Pre-review stamp</span>
         </div>

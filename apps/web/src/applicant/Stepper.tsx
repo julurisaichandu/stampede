@@ -1,7 +1,7 @@
 import type { PermitStatus } from '../../../api/contracts.ts'
 import './review.css'
 
-const STEPS = ['Describe your deck', 'Pre-review', 'Make changes', 'Pre-review complete']
+const STEPS = ['Upload or describe', 'Pre-review', 'Make changes', 'Pre-review complete']
 
 const STEP_OF: Record<PermitStatus, number> = {
   INTAKE: 0,

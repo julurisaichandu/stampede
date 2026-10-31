@@ -45,19 +45,19 @@ export const RULES: Record<string, Rule> = {
           return {
             title,
             wrong: reason,
-            change: 'Raise the railing to meet this rule, then tell me the new height in the chat and I will send a revision.',
+            change: 'Raise the railing to meet this rule, then upload a revised plan or tell me the new height in the chat, and I will send a revision.',
           }
         }
         return {
           title,
           wrong: `Your railing is ${have} inches. Because the deck is more than 30 inches above the ground, the code asks for at least ${need} inches.`,
-          change: `Raise the railing to at least ${need} inches, then tell me the new height in the chat and I will send a revision.`,
+          change: `Raise the railing to at least ${need} inches, then upload a revised plan or tell me the new height in the chat, and I will send a revision.`,
         }
       },
       NEEDS_INFORMATION: () => ({
         title: 'We need your railing height',
         wrong: 'We do not have a railing height yet, and your deck may be high enough to need one.',
-        change: 'Tell me the railing height in the chat.',
+        change: 'Upload your plans or tell me the railing height in the chat.',
       }),
       PASS: ({ observed, required, reason }) => {
         const have = measure(observed)
