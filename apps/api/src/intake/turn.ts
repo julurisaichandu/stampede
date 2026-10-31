@@ -146,7 +146,13 @@ export function composeReply({
       : sentences(turn.ack, "Tell me what you'd like to change and I'll send it back to the reviewers.")
   }
 
-  const asksAlready = turn.facts.invalid.length > 0 || lookup?.status === "needs_confirm" || lookup?.status === "unavailable"
+  // The model writes its ack before the city answers, so a failed lookup makes "updated the address" false.
+  const lookupFailed = lookup !== null && lookup.status !== "matched"
+  const asksAlready =
+    turn.facts.invalid.length > 0 ||
+    lookup?.status === "needs_confirm" ||
+    lookup?.status === "unavailable" ||
+    (lookupFailed && permit.property !== null)
   const question = asksAlready
     ? ""
     : nextQuestion({
@@ -159,5 +165,5 @@ export function composeReply({
           ),
         },
       })
-  return sentences(turn.ack, lookupSentence(lookup), question)
+  return sentences(lookupFailed && !turn.facts.invalid.length ? "" : turn.ack, lookupSentence(lookup), question)
 }

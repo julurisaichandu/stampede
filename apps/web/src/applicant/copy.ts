@@ -95,7 +95,7 @@ export const RULES: Record<string, Rule> = {
         const overlay = property?.zoningOverlay ? ` Overlay ${property.zoningOverlay} also applies.` : ''
         return {
           title: 'A City planner needs to check this one',
-          wrong: `Rear setback for ${kind} in ${property?.zoningBase ?? 'this district'} not verified.${overlay}`,
+          wrong: `We could not verify the rear setback for ${kind} in ${property?.zoningBase ?? 'this district'}.${overlay}`,
           change: 'Check San Jose Municipal Code Ch. 20.30, Table 20-60 (§20.30.200) and §20.30.400 with a City planner.',
         }
       },

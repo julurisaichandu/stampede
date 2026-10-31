@@ -1,6 +1,6 @@
 import { currentFindings, type Finding, type PermitApplication } from '../../../api/contracts.ts'
 import { usePermit } from '../lib/usePermit.ts'
-import { findingCopy, RULES, STATUS_PILL } from './copy.ts'
+import { findingCopy, httpUrl, RULES, STATUS_PILL } from './copy.ts'
 import { NotFound } from './NotFound.tsx'
 import { openItemWords, openItems } from './Stamp.tsx'
 import './packet.css'
@@ -116,7 +116,7 @@ function FindingEntry({ finding, permit }: { finding: Finding; permit: PermitApp
           {finding.reviewer === 'building' ? 'Building' : 'Zoning'} reviewer · revision {finding.revision}
         </span>
       </p>
-      <a className="packet-url" href={finding.sourceUrl}>
+      <a className="packet-url" href={httpUrl(finding.sourceUrl) ?? undefined}>
         {finding.sourceUrl}
       </a>
     </li>
@@ -243,12 +243,12 @@ export function PacketView({ permit }: { permit: PermitApplication }) {
 }
 
 export default function Packet({ id }: { id: string }) {
-  const { permit, missing } = usePermit(id)
+  const { permit, missing, stalled } = usePermit(id)
   if (missing) return <NotFound />
   if (!permit) {
     return (
       <main className="empty-screen">
-        <p>Opening your packet…</p>
+        <p>{stalled ? "We can't open your packet right now. It's saved, and we'll keep trying." : 'Opening your packet…'}</p>
       </main>
     )
   }

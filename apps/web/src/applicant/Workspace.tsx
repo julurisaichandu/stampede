@@ -74,7 +74,7 @@ export function WorkspaceView({
   onRun?: () => void
 }) {
   const street = permit.property?.address.split(',')[0]
-  const openLookup = permit.status === 'INTAKE' && !permit.property ? lookup : null
+  const openLookup = permit.status === 'INTAKE' ? lookup : null
   const picking = openLookup?.status === 'needs_confirm'
 
   const sheetRef = useRef<HTMLDivElement>(null)
@@ -96,8 +96,12 @@ export function WorkspaceView({
     lastRevision.current = permit.revision
     const moved = from !== permit.status
     if (revised || (moved && permit.status === 'PRE_REVIEW_COMPLETE')) sheetRef.current?.scrollIntoView({ block: 'start' })
-    else if (moved && from === 'INTAKE') findingsRef.current?.scrollIntoView({ block: 'start' })
+    else if (moved && (from === 'INTAKE' || permit.status === 'CORRECTIONS_REQUESTED')) findingsRef.current?.scrollIntoView({ block: 'start' })
   }, [permit.status, permit.revision])
+
+  useEffect(() => {
+    if (reviewing) findingsRef.current?.scrollIntoView({ block: 'start' })
+  }, [reviewing])
 
   // The picker and the run button unmount with focus on them, and the next step is always chat.
   // Desktop only: on a phone this would raise the keyboard over what just changed.
@@ -126,7 +130,7 @@ export function WorkspaceView({
           </p>
         )}
         <div className="workspace-steps">
-          <Stepper status={permit.status} />
+          <Stepper status={permit.status} reviewing={reviewing} />
         </div>
       </header>
 
@@ -144,6 +148,8 @@ export function WorkspaceView({
             loading={loading}
             typing={typing}
             sending={sending}
+            status={permit.status}
+            permitId={permit.id}
             pointer={openLookup ? (POINTERS[openLookup.status] ?? null) : null}
             onSend={onSend}
             onRetry={onRetry}
@@ -152,7 +158,7 @@ export function WorkspaceView({
 
         <section className="workspace-file" aria-label="Your file">
           <div className="sheet-stack vt-sheet" ref={sheetRef}>
-            <Sheet permit={permit} />
+            <Sheet permit={permit} reading={sending && !permit.property} />
             <Stamp permit={permit} />
           </div>
           {/* The sticky button would sit on top of the picker, and it cannot run until an address is chosen. */}
@@ -161,11 +167,11 @@ export function WorkspaceView({
               <CandidatePicker lookup={openLookup} busy={sending} onChoose={onChoose} />
             </div>
           ) : (
-            <RunReview permit={permit} busy={reviewing} error={reviewError} onRun={onRun} />
+            <RunReview permit={permit} busy={reviewing} sending={sending} error={reviewError} onRun={onRun} />
           )}
           <PacketCard permit={permit} />
           <div className="workspace-findings" ref={findingsRef}>
-            <Findings permit={permit} />
+            <Findings permit={permit} reviewing={reviewing} />
           </div>
         </section>
       </div>
