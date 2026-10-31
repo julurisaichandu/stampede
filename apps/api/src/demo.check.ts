@@ -133,11 +133,11 @@ assert.equal((await read(id)).intake.confirmedAt, confirmedAt)
 await reached(id, "CORRECTIONS_REQUESTED")
 permit = await read(id)
 assert.deepEqual(
-  permit.findings.map((f) => [f.ruleId, f.status]),
+  permit.findings.map((f) => [f.ruleId, f.status]).sort(),
   [
-    ["SJ-PERMIT-01", "PASS"],
     ["CRC-GUARD-01", "CORRECTION"],
     ["SJ-DETAIL-01", "NEEDS_INFORMATION"],
+    ["SJ-PERMIT-01", "PASS"],
     ["SJ-ZONING-01", "NEEDS_HUMAN_VERIFICATION"],
   ],
 )
@@ -184,11 +184,11 @@ assert.equal(permit.deck.guardHeightIn, 42)
 assert.deepEqual(permit.revisions.map((r) => [r.revision, r.deck.guardHeightIn]), [[1, 36], [2, 42]])
 assert.deepEqual(permit.findings.filter((f) => f.revision === 2).map((f) => f.ruleId), ["CRC-GUARD-01"])
 assert.deepEqual(
-  currentFindings(permit.findings).map((f) => [f.ruleId, f.status, f.revision]),
+  currentFindings(permit.findings).map((f) => [f.ruleId, f.status, f.revision]).sort(),
   [
-    ["SJ-PERMIT-01", "PASS", 1],
     ["CRC-GUARD-01", "PASS", 2],
     ["SJ-DETAIL-01", "NEEDS_INFORMATION", 1],
+    ["SJ-PERMIT-01", "PASS", 1],
     ["SJ-ZONING-01", "NEEDS_HUMAN_VERIFICATION", 1],
   ],
 )
