@@ -38,16 +38,59 @@ export type TurnFacts = {
   invalid: string[]
 }
 
-export function readTurn(turn: IntakeTurn): TurnFacts {
+const MAX_VALUE: Partial<Record<keyof Deck, number>> = {
+  lengthFt: 200,
+  widthFt: 200,
+  maxHeightIn: 240,
+  guardHeightIn: 120,
+  rearSetbackFt: 500,
+}
+const MAX_LEDGER_CHARS = 200
+
+const ONES = "zero one two three four five six seven eight nine ten eleven twelve thirteen fourteen fifteen sixteen seventeen eighteen nineteen".split(" ")
+const TENS = "twenty thirty forty fifty sixty seventy eighty ninety".split(" ")
+
+function numbersIn(text: string): Set<number> {
+  const plain = text.toLowerCase().replace(/(\d),(?=\d{3}\b)/g, "$1")
+  const said = new Set((plain.match(/\d+(?:\.\d+)?/g) ?? []).map(Number))
+  const words = plain.match(/[a-z]+/g) ?? []
+  words.forEach((word, i) => {
+    if (ONES.includes(word)) said.add(ONES.indexOf(word))
+    const tens = (TENS.indexOf(word) + 2) * 10
+    if (!tens) return
+    said.add(tens)
+    const unit = ONES.indexOf(words[i + 1])
+    if (unit > 0 && unit < 10) said.add(tens + unit)
+  })
+  if (/half|½|1\/2/.test(plain)) for (const n of [...said]) said.add(n + 0.5)
+  return said
+}
+
+// ponytail: proves the homeowner said this number, not that they said it about this field.
+function homeownerSaid(value: number, said: Set<number>) {
+  if ([value, value / 12, value * 12].some((n) => said.has(n))) return true
+  return [...said].some((feet) => said.has(value - feet * 12))
+}
+
+function usable(key: keyof Deck, value: unknown, said: Set<number> | null) {
+  if (typeof value === "string") return value.length > 0 && value.length <= MAX_LEDGER_CHARS
+  if (typeof value !== "number") return true
+  return value <= (MAX_VALUE[key] ?? Infinity) && (!said || homeownerSaid(value, said))
+}
+
+// homeownerText is everything the homeowner wrote. Left out, only the shape and range checks run.
+export function readTurn(turn: IntakeTurn, homeownerText?: string): TurnFacts {
   const deck: Record<string, unknown> = {}
   const unknown: string[] = []
   const invalid: string[] = []
+  const said = homeownerText === undefined ? null : numbersIn(homeownerText)
   for (const key of DECK_KEYS) {
     const field = turn.deck[key]
     if (field.status === "user_unknown") unknown.push(`deck.${key}`)
     if (field.status !== "stated" || field.value === null) continue
-    const parsed = Deck.shape[key].safeParse(field.value)
-    if (parsed.success) deck[key] = parsed.data
+    const value = typeof field.value === "string" ? field.value.trim() : field.value
+    const parsed = Deck.shape[key].safeParse(value)
+    if (parsed.success && usable(key, parsed.data, said)) deck[key] = parsed.data
     else invalid.push(`deck.${key}`)
   }
   const address = turn.address.status === "stated" ? turn.address.value : null

@@ -3,8 +3,8 @@ import { EMPTY_DECK, emptyPermit, type ChatMessage, type Deck, type Finding, typ
 import type { GisLookup } from "../api-types.ts"
 import { lookup } from "../gis.ts"
 import { explainFindings, findingsTemplate } from "./explain.ts"
-import type { IntakeTurn } from "./schema.ts"
-import { composeReply, nextQuestion, readUserTurn, toMessages, toTurn, type Turn } from "./turn.ts"
+import { readTurn, type IntakeTurn } from "./schema.ts"
+import { composeReply, nextQuestion, readUserTurn, toMessages, toTurn, type ReplyOutcome, type Turn } from "./turn.ts"
 
 const FORBIDDEN = /approv|passes|stampede/i
 const noSlot = { status: "not_mentioned" as const, value: null, confidence: 1 }
@@ -28,7 +28,7 @@ const modelTurn = (over: Partial<IntakeTurn> = {}, deck: Partial<IntakeTurn["dec
 })
 const stated = <T,>(value: T) => ({ status: "stated" as const, value, confidence: 1 })
 const okTurn = (over: Partial<IntakeTurn> = {}, deck: Partial<IntakeTurn["deck"]> = {}) =>
-  toTurn({ ok: true, turn: modelTurn(over, deck) }) as Extract<Turn, { ok: true }>
+  toTurn({ ok: true, turn: modelTurn(over, deck) }, JSON.stringify(deck)) as Extract<Turn, { ok: true }>
 
 const PROPERTY = {
   address: "14630 Noble Ave, San Jose, California, 95132",
@@ -52,8 +52,8 @@ const gis = (status: GisLookup["status"], over: Partial<GisLookup> = {}): GisLoo
   ...over,
 })
 const replies: string[] = []
-const reply = (input: Parameters<typeof composeReply>[0]) => {
-  const out = composeReply(input)
+const reply = (input: Omit<Parameters<typeof composeReply>[0], "outcome"> & { outcome?: ReplyOutcome }) => {
+  const out = composeReply({ outcome: "none", ...input })
   replies.push(out)
   return out
 }
@@ -142,7 +142,7 @@ const cases: [string, () => void | Promise<void>][] = [
     "every failure gives a fixed friendly reply and no facts",
     () => {
       for (const reason of ["refused", "incomplete", "invalid", "busy", "unavailable"] as const) {
-        const t = toTurn({ ok: false, reason })
+        const t = toTurn({ ok: false, reason }, "")
         assert.equal(t.ok, false)
         assert.ok(!t.ok && t.reply.length > 10, reason)
         assert.equal(reply({ turn: t, lookup: gis("matched", { property: PROPERTY }), permit: draft() }), !t.ok && t.reply)
@@ -205,7 +205,7 @@ const cases: [string, () => void | Promise<void>][] = [
     },
   ],
   [
-    "composeReply announces a real revision only",
+    "composeReply announces a revision only when the server says one went in",
     () => {
       const corrections = { ...draft(FULL), status: "CORRECTIONS_REQUESTED" as const }
       const fixed = okTurn({ reply: "Railing at 42 inches." }, { guardHeightIn: stated(42) })
@@ -213,6 +213,7 @@ const cases: [string, () => void | Promise<void>][] = [
         turn: fixed,
         lookup: null,
         permit: { ...corrections, revision: 2, deck: { ...FULL, guardHeightIn: 42 } },
+        outcome: "revision_submitted",
       })
       assert.match(sent, /Revision 2 submitted\./)
       assert.match(sent, /rechecking what changed/)
@@ -221,24 +222,77 @@ const cases: [string, () => void | Promise<void>][] = [
       assert.doesNotMatch(idle, /submitted/)
       assert.match(idle, /what you'd like to change/)
 
-      const later = reply({ turn: okTurn({ reply: "Thanks." }), lookup: null, permit: { ...corrections, revision: 2 } })
-      assert.doesNotMatch(later, /submitted/)
+      const restated = reply({
+        turn: okTurn({}, { guardHeightIn: stated(40) }),
+        lookup: null,
+        permit: { ...corrections, revision: 2, deck: { ...FULL, guardHeightIn: 40 } },
+      })
+      assert.doesNotMatch(restated, /submitted/)
+      assert.match(restated, /already/)
 
-      const notWritten = reply({ turn: fixed, lookup: null, permit: { ...corrections, revision: 1 } })
-      assert.doesNotMatch(notWritten, /submitted/)
+      const resent = reply({
+        turn: okTurn({ reply: "Hi." }),
+        lookup: null,
+        permit: { ...corrections, revision: 2 },
+        outcome: "revision_pending",
+      })
+      assert.match(resent, /sent it again/)
+      assert.doesNotMatch(resent, /submitted|didn't save/)
+
+      const dropped = reply({ turn: fixed, lookup: null, permit: { ...corrections, revision: 2 }, outcome: "revision_pending" })
+      assert.match(dropped, /didn't save that/)
+      assert.match(dropped, /once they've answered/)
+      assert.doesNotMatch(dropped, /Railing at 42/)
     },
   ],
   [
-    "other statuses and a locked draft say the reviewers have the file, without the model's words",
+    "locked says the reviewers have the file, a review that never went out does not",
     () => {
       const t = okTurn({ reply: "Sure, changed it." }, { guardHeightIn: stated(42) })
       for (const status of ["READY_FOR_REVIEW", "IN_REVIEW", "REVISED", "PRE_REVIEW_COMPLETE"] as const) {
-        const out = reply({ turn: t, lookup: null, permit: { ...draft(FULL), status } })
+        const out = reply({ turn: t, lookup: null, permit: { ...draft(FULL), status }, outcome: "locked" })
         assert.match(out, /reviewers/, status)
         assert.doesNotMatch(out, /Sure|Revision/, status)
       }
-      const locked = { ...draft(FULL), intake: { ...intake, complete: true } }
-      assert.match(reply({ turn: t, lookup: null, permit: locked }), /with the reviewers/)
+      const permit = { ...draft(FULL), intake: { ...intake, complete: true } }
+      const notSent = reply({ turn: t, lookup: null, permit, outcome: "review_not_sent" })
+      assert.match(notSent, /hasn't reached the reviewers/)
+      assert.match(notSent, /Try again/)
+      assert.doesNotMatch(notSent, /Sure|with the reviewers/)
+    },
+  ],
+  [
+    "a value out of range, invented, or an empty ledger never reaches the deck",
+    () => {
+      const read = (deck: Partial<IntakeTurn["deck"]>, text?: string) => readTurn(modelTurn({}, deck), text)
+      assert.deepEqual(read({ guardHeightIn: stated(500) }, "railing 500 inches").invalid, ["deck.guardHeightIn"])
+      assert.deepEqual(read({ guardHeightIn: stated(500) }).invalid, ["deck.guardHeightIn"], "range holds without text")
+      assert.deepEqual(read({ lengthFt: stated(20) }, "fill in sensible values").invalid, ["deck.lengthFt"])
+      assert.deepEqual(read({ ledgerType: stated("   ") }).invalid, ["deck.ledgerType"])
+      assert.deepEqual(read({ ledgerType: stated("x".repeat(201)) }).invalid, ["deck.ledgerType"])
+      assert.deepEqual(read({ ledgerType: stated("  lag screws ") }).deck, { ledgerType: "lag screws" })
+      const t = toTurn({ ok: true, turn: modelTurn({ reply: "Set it to 20." }, { lengthFt: stated(20) }) }, "whatever")
+      assert.ok(t.ok && /can't use that value/.test(t.ack), "the model's claim is not shown")
+    },
+  ],
+  [
+    "a value the homeowner really gave is kept, however they wrote it",
+    () => {
+      const kept: [keyof IntakeTurn["deck"], number, string][] = [
+        ["lengthFt", 16, "about 16 by 12 feet"],
+        ["widthFt", 12, "sixteen by twelve"],
+        ["guardHeightIn", 42, "I'll make the railing 42 inches."],
+        ["guardHeightIn", 42, "forty-two inches"],
+        ["guardHeightIn", 42, "three and a half feet"],
+        ["guardHeightIn", 42, `3'6" tall`],
+        ["maxHeightIn", 36, "it's 3 feet off the ground"],
+        ["maxHeightIn", 40, "three feet four"],
+        ["lengthFt", 16, "192 inches long"],
+        ["rearSetbackFt", 25.5, "25.5 ft back"],
+      ]
+      for (const [key, value, text] of kept) {
+        assert.deepEqual(readTurn(modelTurn({}, { [key]: stated(value) }), text).deck, { [key]: value }, text)
+      }
     },
   ],
   [

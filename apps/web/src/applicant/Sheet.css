@@ -94,6 +94,13 @@
   color: var(--ink-2);
 }
 
+/* Nothing to type yet while the first turn runs, so the empty cells show the lookup is under way. */
+.sheet-grid.is-reading .sheet-unknown {
+  border-bottom-color: transparent;
+  background: linear-gradient(100deg, var(--line) 30%, var(--paper-raised) 50%, var(--line) 70%) 0 0 / 220% 100%;
+  animation: pill-shimmer 1.5s linear infinite;
+}
+
 .sheet-value {
   display: inline-block;
   min-height: 1.3em;
@@ -128,6 +135,7 @@
 }
 
 .sheet-revision {
+  flex: none;
   overflow: hidden;
   white-space: nowrap;
 }
@@ -272,15 +280,16 @@
   color: var(--ink-2);
 }
 
-/* Sticky stops at the column's 40px padding, so the negative offsets close that gap. The band matches the column tint. */
+/* Sticky stops at the column's 40px padding, so the negative offsets close that gap.
+   The band has no fill of its own: a flat colour cannot match the grain and the column tint. */
 .run-review {
-  --band: color-mix(in srgb, var(--ink) 2.2%, var(--paper));
   position: sticky;
   bottom: -40px;
   z-index: 2;
   margin-bottom: -40px;
   padding-block: 18px 52px;
-  background: linear-gradient(to bottom, transparent, var(--band) 18px);
+  backdrop-filter: blur(6px);
+  mask-image: linear-gradient(to bottom, transparent, #000 18px);
 }
 
 @media (max-width: 959px) {
@@ -289,6 +298,32 @@
     margin-bottom: 0;
     padding-bottom: 12px;
   }
+}
+
+/* In flow during review, so it never rides over the findings. */
+.run-review--inline {
+  position: static;
+  margin-bottom: 0;
+  padding-block: 0;
+  backdrop-filter: none;
+  mask-image: none;
+}
+
+/* Stays on screen at either end of the column: the file may be scrolled to the sheet or to the findings. */
+.run-review--overdue {
+  top: 12px;
+  bottom: 12px;
+  display: grid;
+  gap: 8px;
+  margin-bottom: 0;
+  padding-block: 0;
+  backdrop-filter: none;
+  mask-image: none;
+}
+
+/* From revision 2 the band is only a live region until the wait line arrives, so it takes no gap. */
+.run-review:empty {
+  position: absolute;
 }
 
 .run-review-btn {
@@ -318,6 +353,17 @@
 
 .run-review-error {
   margin-top: 8px;
+}
+
+.run-review-wait {
+  padding: 10px 14px;
+  border: 1px solid var(--line);
+  border-radius: 10px;
+  background: var(--paper-raised);
+  box-shadow: var(--shadow-card);
+  font-size: 14px;
+  line-height: 1.45;
+  color: var(--ink-2);
 }
 
 .run-review-retry {

@@ -12,12 +12,21 @@ function Block({ label, text }: { label: string; text: string }) {
   )
 }
 
-function Result({ finding, permit }: { finding: Finding; permit: PermitApplication }) {
+// submitRevision leaves the status alone, so the recheck starts when the revision outruns the last
+// frozen one. A correction carried over a revision that did not touch it stops rechecking once frozen.
+function rechecking(finding: Finding, permit: PermitApplication) {
+  if (finding.status !== 'CORRECTION' || finding.revision >= permit.revision) return false
+  const unfrozen = permit.revision > (permit.revisions.at(-1)?.revision ?? 0)
+  return unfrozen || permit.status === 'REVISED' || permit.status === 'IN_REVIEW'
+}
+
+function Result({ finding, permit, recheck }: { finding: Finding; permit: PermitApplication; recheck: boolean }) {
   const copy = findingCopy(finding, permit)
   const href = httpUrl(finding.sourceUrl)
+  const { tone, label } = recheck ? { tone: 'reviewing', label: 'Rechecking…' } : STATUS_PILL[finding.status]
   return (
     <>
-      <FindingHead title={copy.title} tone={STATUS_PILL[finding.status].tone} pill={STATUS_PILL[finding.status].label} />
+      <FindingHead title={copy.title} tone={tone} pill={label} />
       <div className="finding-body">
         {copy.note ? <Block label="What this means" text={copy.note} /> : null}
         {copy.wrong ? <Block label="What's wrong" text={copy.wrong} /> : null}
@@ -59,6 +68,8 @@ function Slot({ ruleId, finding, permit }: { ruleId: string; finding?: Finding; 
   const changed = finding?.status !== shown?.status
   const face = changed ? shown : finding
   const flip = landing ? 'finding--in' : changed ? 'finding--out' : ''
+  const recheck = face ? rechecking(face, permit) : false
+  const edge = face && !recheck ? `status-${STATUS_PILL[face.status].tone}` : ''
 
   useEffect(() => {
     if (!landing) return
@@ -79,11 +90,11 @@ function Slot({ ruleId, finding, permit }: { ruleId: string; finding?: Finding; 
   return (
     <div className="finding-slot" ref={slot} data-rule={ruleId}>
       <article
-        className={`finding card ${face ? `status-${STATUS_PILL[face.status].tone}` : ''} ${flip}`}
+        className={`finding card ${edge} ${recheck ? 'finding--rechecking' : ''} ${flip}`}
         onAnimationEnd={onAnimationEnd}
       >
         {face ? (
-          <Result finding={face} permit={permit} />
+          <Result finding={face} permit={permit} recheck={recheck} />
         ) : (
           <>
             <FindingHead title={RULES[ruleId]?.label ?? 'Reviewer note'} tone="reviewing" pill="Reviewing…" />
@@ -95,8 +106,9 @@ function Slot({ ruleId, finding, permit }: { ruleId: string; finding?: Finding; 
   )
 }
 
-export function Findings({ permit }: { permit: PermitApplication }) {
-  if (permit.status === 'INTAKE') return null
+export function Findings({ permit, reviewing = false }: { permit: PermitApplication; reviewing?: boolean }) {
+  const sending = permit.status === 'INTAKE'
+  if (sending && !reviewing) return null
 
   const current = currentFindings(permit.findings)
   const ruleIds = [...RULE_ORDER, ...current.map((finding) => finding.ruleId).filter((id) => !RULE_ORDER.includes(id))]
@@ -104,6 +116,7 @@ export function Findings({ permit }: { permit: PermitApplication }) {
   return (
     <section className="findings" aria-label="Findings" aria-live="polite">
       <h2>What the reviewers found</h2>
+      {sending ? <p className="finding-text">Sending your file to the reviewers…</p> : null}
       {ruleIds.map((ruleId) => (
         <Slot key={ruleId} ruleId={ruleId} finding={current.find((finding) => finding.ruleId === ruleId)} permit={permit} />
       ))}

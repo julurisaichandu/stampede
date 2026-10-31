@@ -1,15 +1,24 @@
 import { randomUUID } from "node:crypto"
 import { serve } from "@hono/node-server"
 import { Hono, type Context } from "hono"
+import { bodyLimit } from "hono/body-limit"
 import { HTTPException } from "hono/http-exception"
 import { z } from "zod"
-import { missingMinimum, type ChatMessage, type Deck, type RelayEnvelope } from "../contracts.ts"
+import {
+  currentFindings,
+  missingMinimum,
+  type ChatMessage,
+  type Deck,
+  type PermitApplication,
+  type RelayEnvelope,
+} from "../contracts.ts"
 import { actors } from "../generated/index.js"
 import { permitActor } from "./actor.ts"
 import type {
   ApiFailure,
   ChatResponse,
   CreatePermitResponse,
+  GisLookup,
   LookupResponse,
   ReviewBlocked,
   ReviewOk,
@@ -21,6 +30,8 @@ import { composeReply, nextQuestion, readUserTurn, type Turn } from "./intake/tu
 import { onNeedsInput, openPermitChannel, post, relayMode } from "./relay.ts"
 
 const PORT = 8787
+const HOST = "127.0.0.1" // Vite proxies here. Anything wider lets the venue wifi spend Relay and OpenAI calls.
+const MAX_BODY_BYTES = 16 * 1024
 const PERMIT_ID = /^[A-Za-z0-9._-]+$/
 const GREETING = "Tell me about the deck you want to build. I'll start with the address."
 const REVIEWERS_UNREACHABLE =
@@ -56,6 +67,10 @@ function permitId(c: Context): string {
 }
 
 async function readBody<T>(c: Context, schema: z.ZodType<T>): Promise<T> {
+  // A cross-site form can send text/plain with no preflight. It can't send this.
+  if (!c.req.header("content-type")?.startsWith("application/json")) {
+    throw new HTTPException(400, { message: "That request isn't valid." })
+  }
   const parsed = schema.safeParse(await c.req.json().catch(() => null))
   if (!parsed.success) throw new HTTPException(400, { message: "That request isn't valid." })
   return parsed.data
@@ -73,8 +88,25 @@ function sendRevision(permitId: string, revision: number, changedFields: string[
   })().catch((err) => console.warn("[api] revision send failed", err))
 }
 
+// The contract can't clear a property, so a failed address change has to say what the file still holds.
+function noteKeptParcel(reply: string, found: GisLookup | null, property: PermitApplication["property"]) {
+  return found && !found.property && property ? `${reply} Your file still shows ${property.address}.` : reply
+}
+
+// For a NEEDS_INPUT that was missed or failed. The status event's `at` is the durable dedupe.
+async function explainMissed(id: string) {
+  const actor = permitActor(id)
+  const permit = await actor.read()
+  const moved = permit.events.at(-1)
+  if (permit.status !== "CORRECTIONS_REQUESTED" || moved?.to !== "CORRECTIONS_REQUESTED") return
+  if (permit.chat.some((m) => m.role === "assistant" && m.at >= moved.at)) return
+  const corrections = currentFindings(permit.findings).filter((f) => f.status === "CORRECTION")
+  if (corrections.length) await actor.appendChat(assistant(await explainFindings(corrections), moved.at))
+}
+
 async function chatTurn(id: string, text: string): Promise<ChatResponse> {
   const actor = permitActor(id)
+  await explainMissed(id)
   const { chat } = await load(id)
   await actor.appendChat({ role: "user", content: text, at: new Date().toISOString() })
   const turn = await readUserTurn(chat, text)
@@ -84,6 +116,7 @@ async function chatTurn(id: string, text: string): Promise<ChatResponse> {
   const draftOpen = permit.status === "INTAKE" && !permit.intake.complete
   const found = turn.ok && turn.facts.address && draftOpen ? await lookup(turn.facts.address) : null
   let revisionToSend: { revision: number; changedFields: string[] } | null = null
+  let outcome: Parameters<typeof composeReply>[0]["outcome"] = "none"
 
   if (turn.ok && draftOpen) {
     if (found?.property) await actor.setProperty(found.property)
@@ -97,6 +130,7 @@ async function chatTurn(id: string, text: string): Promise<ChatResponse> {
       intake: { ...permit.intake, unknownFields },
     })
     await actor.applyIntakePatch({ deck: turn.facts.deck, unknownFields, missingFields })
+    outcome = "applied"
   } else if (permit.status === "CORRECTIONS_REQUESTED") {
     const frozen = permit.revisions.at(-1)
     if (frozen && permit.revision > frozen.revision) {
@@ -104,19 +138,25 @@ async function chatTurn(id: string, text: string): Promise<ChatResponse> {
         revision: permit.revision,
         changedFields: changedPaths(deckChanges(frozen.deck, permit.deck)),
       }
+      outcome = "revision_pending"
     } else if (turn.ok && !turn.facts.invalid.length) {
       const changes = deckChanges(permit.deck, turn.facts.deck)
       if (changes.length) {
         const changedFields = changedPaths(changes)
         const revision = await actor.submitRevision({ deck: Object.fromEntries(changes), changedFields })
         revisionToSend = { revision, changedFields }
+        outcome = "revision_submitted"
       }
     }
+  } else if (permit.status !== "INTAKE") {
+    outcome = "locked"
+  } else if (permit.intake.complete) {
+    outcome = "review_not_sent" // Only the office moves the status, so nothing has confirmed the post landed.
   }
 
   // composeReply needs this read from before the post, while the status is still CORRECTIONS_REQUESTED.
   permit = await actor.read()
-  const reply = composeReply({ turn, lookup: found, permit })
+  const reply = noteKeptParcel(composeReply({ turn, lookup: found, permit, outcome }), found, permit.property)
   await actor.appendChat(assistant(reply))
   if (revisionToSend) sendRevision(id, revisionToSend.revision, revisionToSend.changedFields)
   return { reply, lookup: found }
@@ -145,7 +185,12 @@ async function pickCandidate(id: string, address: string, apn: string | null): P
       missingFields: missingMinimum({ ...permit, property: found.property }),
     })
   }
-  const reply = composeReply({ turn: PICK, lookup: found, permit: await actor.read() })
+  const after = await actor.read()
+  const reply = noteKeptParcel(
+    composeReply({ turn: PICK, lookup: found, permit: after, outcome: "applied" }),
+    found,
+    after.property,
+  )
   await actor.appendChat(assistant(reply))
   return { reply, lookup: found }
 }
@@ -154,10 +199,14 @@ async function explainCorrections(e: RelayEnvelope) {
   const actor = permitActor(e.permitId)
   const permit = await actor.read()
   if (e.revision < permit.revision) return
-  if (permit.chat.some((m) => m.role === "assistant" && m.at === e.timestamp)) return
+  const moved = permit.events.at(-1)?.at
+  if (permit.chat.some((m) => m.role === "assistant" && (m.at === e.timestamp || m.at === moved))) return
   const ids = FindingIds.safeParse(e.payload.findingIds)
   const listed = permit.findings.filter((f) => ids.data?.includes(f.findingId))
-  if (!listed.length) return console.warn("[api] NEEDS_INPUT listed no findings on", e.permitId)
+  if (!listed.length) {
+    console.warn("[api] NEEDS_INPUT listed no findings on", e.permitId)
+    return explainMissed(e.permitId)
+  }
   await actor.appendChat(assistant(await explainFindings(listed), e.timestamp))
 }
 
@@ -171,6 +220,13 @@ app.onError((err, c) => {
   return c.json<ApiFailure>({ error: "Something went wrong on our side. Please try again.", retryable: true }, 500)
 })
 app.notFound((c) => c.json<ApiFailure>({ error: "Not found.", retryable: false }, 404))
+app.use(
+  "/api/*",
+  bodyLimit({
+    maxSize: MAX_BODY_BYTES,
+    onError: (c) => c.json<ApiFailure>({ error: "That message is too long.", retryable: false }, 413),
+  }),
+)
 
 app.post("/api/permits", async (c) => {
   const id = randomUUID()
@@ -227,13 +283,15 @@ app.post("/api/permits/:id/socket", async (c) => {
   c.header("Cache-Control", "no-store")
   const id = permitId(c)
   await load(id)
+  // Not awaited: an explanation is a model call, and the page needs its socket now.
+  serial(id, () => explainMissed(id)).catch((err) => console.warn("[api] missed explanation failed", err))
   const { websocketUrl } = await actors.PermitActor.prepareWebsocket({ actorId: id, metadata: { role: "viewer" } })
   return c.json<SocketGrant>({ websocketUrl })
 })
 
 onNeedsInput((e) => serial(e.permitId, () => explainCorrections(e)))
 
-serve({ fetch: app.fetch, port: PORT }, () => console.log(`[api] listening on ${PORT}, relay mode ${relayMode()}`))
+serve({ fetch: app.fetch, port: PORT, hostname: HOST }, () => console.log(`[api] listening on ${PORT}, relay mode ${relayMode()}`))
 
 // The first request with a schema is slower. readUserTurn never rejects.
 void readUserTurn([], "I want a backyard deck at 14630 Noble Ave, San Jose, about 16 by 12 feet.")

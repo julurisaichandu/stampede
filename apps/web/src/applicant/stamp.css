@@ -27,6 +27,13 @@
   pointer-events: none;
 }
 
+/* Applied before the stamp mounts as well, so the slam does not reflow the footer on a phone. */
+@media (max-width: 480px) {
+  .sheet-stack .sheet footer.sheet-foot {
+    grid-template-columns: minmax(0, 1fr);
+  }
+}
+
 @media (prefers-reduced-motion: no-preference) {
   .stamp--slam {
     animation: stamp-slam 240ms var(--ease-slam) 420ms both;

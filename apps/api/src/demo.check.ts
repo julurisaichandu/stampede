@@ -62,6 +62,9 @@ const reached = (id: string, status: PermitStatus) =>
   assert.equal((await call(`/api/permits/${id}/chat`, { text: "x".repeat(2001) })).status, 400)
   const notJson = await fetch(`${API}/api/permits/${id}/chat`, { method: "POST", body: "{" })
   assert.equal(notJson.status, 400)
+  const plainText = await fetch(`${API}/api/permits/${id}/chat`, { method: "POST", body: JSON.stringify({ text: "hi" }) })
+  assert.equal(plainText.status, 400)
+  assert.equal((await call(`/api/permits/${id}/chat`, { text: "x".repeat(20_000) })).status, 413)
   assert.equal((await call(`/api/permits/${id}/lookup`, { address: "x" })).status, 400)
   assert.equal((await read(id)).chat.length, 1)
 
@@ -201,5 +204,36 @@ assert.equal(permit.chat.length, chatBefore.length + 2)
 console.log("ok after the stamp chat only appends its two messages")
 
 viewer.close()
+
+// Fresh permit: a failed address change, a post that never landed, and a revision Clerk has not frozen.
+{
+  const id = await newPermit()
+  await say(id, "I want a backyard deck at 14630 Noble Ave, San Jose, about 16 by 12 feet.")
+  await say(id, "attached, about 36 inches high, railing 36 inches.")
+  const parcel = (await read(id)).property
+  const moved = await say(id, "Actually the address is 10600 N Tantau Ave, Cupertino.")
+  assert.match(moved.reply, /still shows 14630 Noble/i)
+  assert.deepEqual((await read(id)).property, parcel)
+  console.log("ok a failed address change names the parcel still on the file")
+
+  // No /review post yet, which is what a 503 leaves behind.
+  await permitActor(id).confirmIntake(new Date().toISOString())
+  const held = await say(id, "Do the reviewers have my file?")
+  assert.doesNotMatch(held.reply, /reviewers have the file|is with the reviewers/i)
+  assert.equal((await review(id)).status, 200)
+  await reached(id, "CORRECTIONS_REQUESTED")
+  console.log("ok an unsent review does not claim the reviewers have the file")
+
+  // Straight to the actor, so no post goes out and the revision stays unfrozen.
+  const revision = await permitActor(id).submitRevision({ deck: { guardHeightIn: 42 }, changedFields: ["deck.guardHeightIn"] })
+  const late = await say(id, "Actually make the railing 44 inches.")
+  assert.match(late.reply, /didn't save that/)
+  permit = await read(id)
+  assert.equal(permit.revision, revision)
+  assert.equal(permit.deck.guardHeightIn, 42)
+  await reached(id, "PRE_REVIEW_COMPLETE")
+  console.log("ok a value sent during an unfrozen revision is refused out loud, and the same revision was resent")
+}
+
 console.log("demo check passed")
 process.exit(0)

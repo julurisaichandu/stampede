@@ -1,6 +1,11 @@
 import { useLayoutEffect, useRef, useState, type FormEvent, type KeyboardEvent } from 'react'
-import type { ChatMessage } from '../../../api/contracts.ts'
+import type { ChatMessage, PermitStatus } from '../../../api/contracts.ts'
 import './workspace.css'
+import './chat.css'
+
+// Same words as GREETING in apps/api/src/server.ts. Shown before the first socket frame so the
+// homeowner's first bubble already sits at its final index and neither remounts nor moves.
+const GREETING = "Tell me about the deck you want to build. I'll start with the address."
 
 // The server opens with its acknowledgement, so the sentence can sit anywhere in the reply.
 const REVISION = /Revision \d+ submitted\.?/
@@ -21,6 +26,8 @@ function AssistantText({ content }: { content: string }) {
 
 export function Chat({
   chat,
+  status,
+  permitId,
   pendingText,
   error,
   loading,
@@ -31,6 +38,8 @@ export function Chat({
   onRetry,
 }: {
   chat: ChatMessage[]
+  status?: PermitStatus
+  permitId?: string
   pendingText: string | null
   error: string | null
   loading: boolean
@@ -45,12 +54,14 @@ export function Chat({
   const input = useRef<HTMLTextAreaElement>(null)
 
   const lines: Pick<ChatMessage, 'role' | 'content'>[] = pendingText
-    ? [...chat, { role: 'user', content: pendingText }]
+    ? [...(chat.length ? chat : [{ role: 'assistant' as const, content: GREETING }]), { role: 'user', content: pendingText }]
     : chat
+  const firstAssistant = lines.findIndex((line) => line.role === 'assistant')
+  const done = status === 'PRE_REVIEW_COMPLETE' && !!permitId
 
   useLayoutEffect(() => {
     log.current?.scrollTo({ top: log.current.scrollHeight })
-  }, [lines.length, typing, error, pointer])
+  }, [lines.length, typing, error, pointer, done])
 
   function send() {
     input.current?.focus()
@@ -78,7 +89,7 @@ export function Chat({
         {lines.length === 0 ? (
           <div className={loading ? 'msg chat-idle' : 'msg'}>
             <p className="label">Intake</p>
-            <p className="voice">{loading ? 'Opening your file…' : 'Tell me about the deck you want to build.'}</p>
+            <p className="voice">{loading ? 'Opening your file…' : GREETING}</p>
           </div>
         ) : null}
 
@@ -92,7 +103,7 @@ export function Chat({
             </div>
           ) : (
             <div key={index} className="msg">
-              <p className="label">Intake</p>
+              {index === firstAssistant ? <p className="label">Intake</p> : null}
               <AssistantText content={line.content} />
             </div>
           ),
@@ -100,7 +111,6 @@ export function Chat({
 
         {typing ? (
           <div className="msg">
-            <p className="label">Intake</p>
             <p className="chat-typing">
               <i aria-hidden="true" />
               <i aria-hidden="true" />
@@ -129,12 +139,22 @@ export function Chat({
         ) : null}
       </div>
 
+      {done ? (
+        <div className="chat-closing">
+          <p>Your pre-review is complete. Your draft packet is ready.</p>
+          {/* Worded apart from the sheet's "Open your draft packet" so that link stays unique. */}
+          <a className="btn" href={`/permits/${encodeURIComponent(permitId)}/packet`}>
+            Go to the packet
+          </a>
+        </div>
+      ) : null}
+
       {/* The field stays editable during a turn: send() holds the draft, so typing ahead is never lost. */}
       <form className={`chat-composer card vt-composer${sending ? ' is-sending' : ''}`} onSubmit={onSubmit}>
         <textarea
           ref={input}
           aria-label="Your message"
-          placeholder="Reply here"
+          placeholder={done ? 'Ask a question' : 'Reply here'}
           rows={1}
           maxLength={2000}
           value={draft}

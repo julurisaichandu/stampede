@@ -96,7 +96,7 @@ function Revision({ value }: { value: number }) {
   )
 }
 
-function SheetBody({ permit, specimen }: { permit: PermitApplication; specimen: boolean }) {
+function SheetBody({ permit, specimen, reading }: { permit: PermitApplication; specimen: boolean; reading: boolean }) {
   const { property, deck, intake, revision } = permit
   const queue = useRef(0)
   const [baseline] = useState(property?.parcelId)
@@ -120,7 +120,7 @@ function SheetBody({ permit, specimen }: { permit: PermitApplication; specimen: 
       {property ? (
         <MatchCard key={property.parcelId} property={property} drop={property.parcelId !== baseline} />
       ) : (
-        <dl className="sheet-grid">
+        <dl className={reading ? 'sheet-grid is-reading' : 'sheet-grid'}>
           {propertyRows.map((row) => (
             <Cell key={row.label} row={row} unsure={false} queue={queue} />
           ))}
@@ -154,7 +154,15 @@ function SheetBody({ permit, specimen }: { permit: PermitApplication; specimen: 
 // Workspace paints an empty permit until the first state frame, and a real file always has chat.
 // Remounting at that moment makes the loaded values the baseline, so a refresh types nothing.
 // The tab that just created the file skips the remount, so its first answers always type in.
-export function Sheet({ permit, specimen = false }: { permit: PermitApplication; specimen?: boolean }) {
+export function Sheet({
+  permit,
+  specimen = false,
+  reading = false,
+}: {
+  permit: PermitApplication
+  specimen?: boolean
+  reading?: boolean
+}) {
   const loaded = permit.chat.length > 0 && !firstTurns.has(permit.id)
-  return <SheetBody key={loaded ? 'loaded' : 'blank'} permit={permit} specimen={specimen} />
+  return <SheetBody key={loaded ? 'loaded' : 'blank'} permit={permit} specimen={specimen} reading={reading} />
 }

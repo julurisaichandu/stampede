@@ -8,7 +8,6 @@ export function MatchCard({ property, drop = false }: { property: Property; drop
     <section className={drop ? 'match card match--drop' : 'match card'} aria-label="City record">
       <header className="match-head">
         <span className="label">City record</span>
-        {source === 'fixture' ? <span className="chip">demo cached data</span> : null}
         {zoningOverlay ? <span className="chip">{zoningOverlay} overlay</span> : null}
       </header>
       <p className="match-address">{address}</p>
@@ -26,7 +25,9 @@ export function MatchCard({ property, drop = false }: { property: Property; drop
           <dd>{lookupConfidence}</dd>
         </div>
       </dl>
-      <p className="match-source">geo.sanjoseca.gov · {clock(fetchedAt)}</p>
+      <p className="match-source">
+        {source === 'fixture' ? <span className="chip">demo cached data</span> : 'geo.sanjoseca.gov'} · {clock(fetchedAt)}
+      </p>
     </section>
   )
 }

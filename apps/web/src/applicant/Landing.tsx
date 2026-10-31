@@ -57,7 +57,7 @@ export default function Landing() {
       <svg className="landing-defs" aria-hidden="true">
         <filter id="ink-edge">
           <feTurbulence type="fractalNoise" baseFrequency="0.9" numOctaves="2" seed="4" />
-          <feDisplacementMap in="SourceGraphic" scale="1.4" />
+          <feDisplacementMap in="SourceGraphic" scale="0.9" />
         </filter>
       </svg>
 

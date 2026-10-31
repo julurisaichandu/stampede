@@ -62,6 +62,7 @@
 
 .findings {
   display: grid;
+  grid-template-columns: minmax(0, 1fr);
   gap: 12px;
   /* Room for a flipping card to swell past the column without a sideways scrollbar. */
   margin-inline: -16px;
@@ -84,6 +85,7 @@
 .finding {
   display: grid;
   gap: 12px;
+  grid-template-columns: minmax(0, 1fr);
   padding: 16px 18px;
   border-left: 3px solid var(--status, var(--line));
   transform-origin: 50% 50%;
@@ -91,9 +93,10 @@
 
 .finding-head {
   display: flex;
+  flex-wrap: wrap;
   align-items: flex-start;
   justify-content: space-between;
-  gap: 12px;
+  gap: 8px 12px;
 }
 
 .finding-head h3 {
@@ -103,7 +106,7 @@
 
 .finding-body {
   display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
+  grid-template-columns: repeat(auto-fit, minmax(min(240px, 100%), 1fr));
   gap: 12px 20px;
 }
 
@@ -112,6 +115,10 @@
   font-size: 15px;
   line-height: 1.45;
   color: var(--ink-2);
+}
+
+.finding--rechecking .finding-text {
+  color: var(--ink-3);
 }
 
 .finding-foot {
@@ -129,6 +136,12 @@
 .finding-meta {
   display: inline-flex;
   gap: 12px;
+}
+
+/* The longest pill is wider than a 320 screen's card. */
+.finding-head .pill {
+  max-width: 100%;
+  white-space: normal;
 }
 
 .finding--out {

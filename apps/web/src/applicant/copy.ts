@@ -15,8 +15,8 @@ export const STATUS_PILL: Record<FindingStatus, { label: string; tone: string }>
   NEEDS_HUMAN_VERIFICATION: { label: 'NEEDS HUMAN VERIFICATION', tone: 'needs-human' },
 }
 
-const inches = (value: Finding['observed']) =>
-  typeof value === 'number' ? `${value} inches` : String(value).replace(/(\d)\s*in$/, '$1 inches')
+// The office's observed and required are free-form ("42 in", 42, null), so anything unreadable is NaN.
+const measure = (value: Finding['observed']) => parseFloat(String(value))
 
 const lowerFirst = (text: string) => text.charAt(0).toLowerCase() + text.slice(1)
 
@@ -39,32 +39,45 @@ export const RULES: Record<string, Rule> = {
     label: 'Railing height',
     reviewer: 'building',
     byStatus: {
-      CORRECTION: ({ observed, required }) => ({
-        title: 'Your railing needs to be taller',
-        wrong: `Your railing is ${inches(observed)}. Because the deck is more than 30 inches above the ground, the code asks for at least ${inches(required)}.`,
-        change: `Raise the railing to at least ${inches(required)}, then tell me the new height in the chat and I will send a revision.`,
-      }),
+      CORRECTION: ({ observed, required, reason }) => {
+        const have = measure(observed)
+        const need = measure(required)
+        const title = 'Your railing needs to be taller'
+        if (Number.isNaN(have) || Number.isNaN(need)) {
+          return {
+            title,
+            wrong: reason,
+            change: 'Raise the railing to meet this rule, then tell me the new height in the chat and I will send a revision.',
+          }
+        }
+        return {
+          title,
+          wrong: `Your railing is ${have} inches. Because the deck is more than 30 inches above the ground, the code asks for at least ${need} inches.`,
+          change: `Raise the railing to at least ${need} inches, then tell me the new height in the chat and I will send a revision.`,
+        }
+      },
       NEEDS_INFORMATION: () => ({
         title: 'We need your railing height',
         wrong: 'We do not have a railing height yet, and your deck may be high enough to need one.',
         change: 'Tell me the railing height in the chat.',
       }),
-      PASS: ({ observed, required, reason }) => ({
-        title: 'Your railing height works',
-        note:
-          typeof observed === 'number' && observed >= parseFloat(required ?? '')
-            ? `Your railing is ${inches(observed)}, which meets the minimum of ${inches(required)}.`
-            : reason,
-      }),
+      PASS: ({ observed, required, reason }) => {
+        const have = measure(observed)
+        const need = measure(required)
+        return {
+          title: 'Your railing height works',
+          note: have >= need ? `Your railing is ${have} inches, which meets the minimum of ${need} inches.` : reason,
+        }
+      },
     },
   },
   'SJ-DETAIL-01': {
     label: 'Connection details',
     reviewer: 'building',
     byStatus: {
-      NEEDS_INFORMATION: ({ required, reason }) => ({
+      NEEDS_INFORMATION: ({ required }) => ({
         title: 'Show how the deck connects',
-        wrong: `We do not have this yet: ${lowerFirst(reason).replace(/\.$/, '')}.`,
+        wrong: 'We do not have the details of how the deck connects yet.',
         change: required ? `Your plans need to show ${lowerFirst(required)}.` : undefined,
       }),
       PASS: () => ({

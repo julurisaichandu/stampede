@@ -211,6 +211,10 @@
   }
 }
 
+.workspace-stalled {
+  margin: 20px 32px 0;
+}
+
 .chat-pointer {
   flex: none;
   margin-top: -10px;
@@ -244,11 +248,16 @@
   gap: 8px;
   margin: 8px 32px 24px;
   padding: 8px;
-  transition: border-color 160ms var(--ease);
+  transition:
+    border-color 160ms var(--ease),
+    box-shadow 160ms var(--ease);
 }
 
 .chat-composer:focus-within {
-  border-color: var(--ink-3);
+  border-color: var(--rust);
+  box-shadow:
+    0 0 0 1px var(--rust),
+    var(--shadow-card);
 }
 
 .chat-composer textarea {
@@ -304,6 +313,10 @@
 
   .chat-composer {
     margin: 8px var(--gutter) 16px;
+  }
+
+  .workspace-stalled {
+    margin: 16px var(--gutter) 0;
   }
 
   .workspace-file {

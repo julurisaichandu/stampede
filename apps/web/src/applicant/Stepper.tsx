@@ -12,8 +12,8 @@ const STEP_OF: Record<PermitStatus, number> = {
   PRE_REVIEW_COMPLETE: 3,
 }
 
-export function Stepper({ status }: { status: PermitStatus }) {
-  const current = STEP_OF[status]
+export function Stepper({ status, reviewing = false }: { status: PermitStatus; reviewing?: boolean }) {
+  const current = status === 'INTAKE' && reviewing ? 1 : STEP_OF[status]
   const complete = status === 'PRE_REVIEW_COMPLETE'
   return (
     <ol className="stepper" aria-label="Progress">

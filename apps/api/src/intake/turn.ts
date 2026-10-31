@@ -7,6 +7,8 @@ export type Turn =
   | { ok: true; intent: IntakeTurn["intent"]; ack: string; facts: TurnFacts }
   | { ok: false; reply: string }
 
+export type ReplyOutcome = "applied" | "locked" | "revision_submitted" | "revision_pending" | "review_not_sent" | "none"
+
 const HISTORY = 12
 const NO_FACTS: TurnFacts = { address: null, deck: {}, unknown: [], invalid: [] }
 
@@ -47,11 +49,11 @@ const READY = "That's all I need for now. Check your file, then press Run pre-re
 
 const LIST = new Intl.ListFormat("en", { type: "conjunction" })
 
-export function toTurn(result: IntakeResult): Turn {
+export function toTurn(result: IntakeResult, homeownerText: string): Turn {
   if (!result.ok) return { ok: false, reply: FAILURE_REPLIES[result.reason] }
   const { intent, reply } = result.turn
   if (intent === "off_topic") return { ok: true, intent, ack: SCOPE, facts: NO_FACTS }
-  const facts = readTurn(result.turn)
+  const facts = readTurn(result.turn, homeownerText)
   if (facts.invalid.length) {
     const names = LIST.format(facts.invalid.map((path) => FIELD_NAMES[path] ?? path))
     return { ok: true, intent, ack: `I can't use that value for the ${names}. Please give me the correct ${names}.`, facts }
@@ -71,7 +73,9 @@ export function toMessages(chat: ChatMessage[], text: string): TurnMessage[] {
 
 export async function readUserTurn(chat: ChatMessage[], text: string): Promise<Turn> {
   try {
-    return toTurn(await extractTurn(toMessages(chat, text)))
+    const messages = toMessages(chat, text)
+    const homeownerText = messages.filter((m) => m.role === "user").map((m) => m.content).join("\n")
+    return toTurn(await extractTurn(messages), homeownerText)
   } catch {
     return { ok: false, reply: FAILURE_REPLIES.unavailable }
   }
@@ -106,39 +110,40 @@ function lookupSentence(lookup: GisLookup | null): string {
   }
 }
 
-// ponytail: restating an unchanged value at revision 2+ reads as a new submission; pass revisions in if that shows up.
-function revisionWentIn(turn: Extract<Turn, { ok: true }>, permit: Pick<PermitApplication, "deck" | "revision">) {
-  const stated = Object.entries(turn.facts.deck)
-  return (
-    permit.revision > 1 &&
-    stated.length > 0 &&
-    stated.every(([key, value]) => permit.deck[key as keyof typeof permit.deck] === value)
-  )
-}
-
 export function composeReply({
   turn,
   lookup,
   permit,
+  outcome,
 }: {
   turn: Turn
   lookup: GisLookup | null
   permit: Pick<PermitApplication, "property" | "deck" | "intake" | "status" | "revision">
+  outcome: ReplyOutcome
 }): string {
   if (!turn.ok) return turn.reply
   const sentences = (...parts: string[]) => parts.filter(Boolean).join(" ")
 
+  switch (outcome) {
+    case "revision_submitted":
+      return sentences(turn.ack, `Revision ${permit.revision} submitted.`, "The reviewers are rechecking what changed.")
+    case "revision_pending":
+      return Object.keys(turn.facts.deck).length || turn.facts.invalid.length
+        ? `I didn't save that. Revision ${permit.revision} is still on its way to the reviewers, and I've sent it again. Tell me the change again once they've answered.`
+        : `Revision ${permit.revision} hadn't reached the reviewers, so I've sent it again.`
+    case "review_not_sent":
+      return "Your file hasn't reached the reviewers yet, so it's locked and I didn't save anything. Press Try again on Run pre-review if it's showing."
+    case "locked":
+      return permit.status === "PRE_REVIEW_COMPLETE"
+        ? "Your pre-review is finished and the reviewers have the file, so nothing here can change now. Your draft packet lists what's still open."
+        : "Your file is with the reviewers right now, so I can't change anything until they finish."
+  }
+
   if (permit.status === "CORRECTIONS_REQUESTED") {
     if (turn.facts.invalid.length) return turn.ack
-    return revisionWentIn(turn, permit)
-      ? sentences(turn.ack, `Revision ${permit.revision} submitted.`, "The reviewers are rechecking what changed.")
+    return Object.keys(turn.facts.deck).length
+      ? "That's already what your file says, so nothing new went to the reviewers. Tell me what you'd like to change."
       : sentences(turn.ack, "Tell me what you'd like to change and I'll send it back to the reviewers.")
-  }
-  if (permit.status === "PRE_REVIEW_COMPLETE") {
-    return "Your pre-review is finished and the reviewers have the file, so nothing here can change now. Your draft packet lists what's still open."
-  }
-  if (permit.status !== "INTAKE" || permit.intake.complete) {
-    return "Your file is with the reviewers right now, so I can't change anything until they finish."
   }
 
   const asksAlready = turn.facts.invalid.length > 0 || lookup?.status === "needs_confirm" || lookup?.status === "unavailable"

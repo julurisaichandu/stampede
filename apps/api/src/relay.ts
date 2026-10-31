@@ -87,8 +87,10 @@ async function openChannel(permitId: string) {
     if (err?.code !== "name_conflict") throw err
   })
   await within(client.channels.join(name))
-  // A repeat invite resolves, so a failed one rejects and the retry reopens. A missed invite would strand the file.
-  for (const agent of OFFICE_AGENTS) await within(client.channels.invite(name, agent))
+  // A failed open must reject: an agent left uninvited never hears REVIEW_REQUEST, and /review would still return 200.
+  for (const agent of OFFICE_AGENTS) {
+    await within(client.channels.invite(name, agent)).catch(() => within(client.channels.invite(name, agent)))
+  }
 }
 
 export async function openPermitChannel(permitId: string): Promise<void> {

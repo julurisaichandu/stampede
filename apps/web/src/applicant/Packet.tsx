@@ -1,24 +1,11 @@
 import { currentFindings, type Finding, type PermitApplication } from '../../../api/contracts.ts'
 import { usePermit } from '../lib/usePermit.ts'
+import { findingCopy, RULES, STATUS_PILL } from './copy.ts'
 import { NotFound } from './NotFound.tsx'
 import { openItemWords, openItems } from './Stamp.tsx'
 import './packet.css'
 
 const BANNER = 'UNOFFICIAL DRAFT — NOT FILED WITH THE CITY'
-
-const FINDING_TITLES: Record<string, string> = {
-  'SJ-PERMIT-01': 'Building permit',
-  'CRC-GUARD-01': 'Railing height',
-  'SJ-DETAIL-01': 'Construction details',
-  'SJ-ZONING-01': 'Rear setback',
-}
-
-const PILLS: Record<Finding['status'], string> = {
-  PASS: 'pill--pass',
-  CORRECTION: 'pill--correction',
-  NEEDS_INFORMATION: 'pill--needs-info',
-  NEEDS_HUMAN_VERIFICATION: 'pill--needs-human',
-}
 
 // Each URL is the one the city's Decks page links. Form 351 changed once, so re-check before relying on these.
 const FORMS = [
@@ -111,14 +98,18 @@ function PropertyRecord({ property }: { property: NonNullable<PermitApplication[
   )
 }
 
-function FindingEntry({ finding }: { finding: Finding }) {
+function FindingEntry({ finding, permit }: { finding: Finding; permit: PermitApplication }) {
+  const { title, note, wrong, change } = findingCopy(finding, permit)
+  const pill = STATUS_PILL[finding.status]
   return (
     <li className="packet-finding">
       <div className="packet-finding-head">
-        <h3>{FINDING_TITLES[finding.ruleId] ?? 'City rule'}</h3>
-        <span className={`pill ${PILLS[finding.status]}`}>{finding.status.replaceAll('_', ' ')}</span>
+        <h3>{title}</h3>
+        <span className={`pill pill--${pill.tone}`}>{pill.label}</span>
       </div>
-      <p>{finding.reason}</p>
+      {[note, wrong, change].filter(Boolean).map((line) => (
+        <p key={line}>{line}</p>
+      ))}
       <p className="packet-cite">
         {finding.citation}
         <span>
@@ -207,7 +198,7 @@ export function PacketView({ permit }: { permit: PermitApplication }) {
           <h2>Findings</h2>
           <ul className="packet-findings">
             {currentFindings(permit.findings).map((finding) => (
-              <FindingEntry key={finding.findingId} finding={finding} />
+              <FindingEntry key={finding.findingId} finding={finding} permit={permit} />
             ))}
           </ul>
         </section>
@@ -217,7 +208,7 @@ export function PacketView({ permit }: { permit: PermitApplication }) {
           <ul className="packet-checklist">
             {open.map((finding) => (
               <li key={finding.findingId}>
-                <strong>{FINDING_TITLES[finding.ruleId] ?? 'Open item'}</strong>
+                <strong>{RULES[finding.ruleId]?.label ?? 'Open item'}</strong>
                 <span>{openItemWords(finding)}</span>
               </li>
             ))}

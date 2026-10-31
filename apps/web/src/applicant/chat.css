@@ -1,0 +1,30 @@
+.chat-log {
+  gap: 26px;
+}
+
+.chat-closing {
+  flex: none;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 14px;
+  margin: 0 32px;
+  padding: 12px 0 4px;
+  border-top: 1px solid var(--line);
+  font-family: var(--font-display);
+  font-size: 16px;
+  line-height: 1.35;
+}
+
+.chat-closing .btn {
+  flex: none;
+  min-height: 38px;
+  padding: 6px 14px;
+  font-size: 14px;
+}
+
+@media (max-width: 959px) {
+  .chat-closing {
+    margin-inline: var(--gutter);
+  }
+}

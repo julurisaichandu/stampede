@@ -2,7 +2,7 @@ import { useEffect, useState } from 'react'
 import { emptyPermit, type PermitApplication } from '../../../api/contracts.ts'
 import type { SocketGrant } from '../../../api/src/api-types.ts'
 
-type Live = { id: string; permit: PermitApplication | null; connected: boolean; missing: boolean }
+type Live = { id: string; permit: PermitApplication | null; connected: boolean; missing: boolean; stalled: boolean }
 
 type Frame =
   | { type: 'state'; state: Partial<PermitApplication> }
@@ -22,9 +22,12 @@ export function mergeFrame(id: string, permit: PermitApplication | null, frame: 
 }
 
 const MAX_RETRY_MS = 8_000
+const STALLED_AFTER = 3
 
-export function usePermit(id: string): { permit: PermitApplication | null; connected: boolean; missing: boolean } {
-  const [live, setLive] = useState<Live>({ id, permit: null, connected: false, missing: false })
+const initial = (id: string): Live => ({ id, permit: null, connected: false, missing: false, stalled: false })
+
+export function usePermit(id: string): Omit<Live, 'id'> {
+  const [live, setLive] = useState<Live>(() => initial(id))
 
   useEffect(() => {
     let cancelled = false
@@ -34,15 +37,17 @@ export function usePermit(id: string): { permit: PermitApplication | null; conne
 
     const update = (change: (prev: Live) => Partial<Live>) =>
       setLive((prev) => {
-        const base = prev.id === id ? prev : { id, permit: null, connected: false, missing: false }
+        const base = prev.id === id ? prev : initial(id)
         return { ...base, ...change(base) }
       })
 
     const reconnect = () => {
       if (cancelled) return
-      update(() => ({ connected: false }))
-      retry = setTimeout(connect, Math.min(500 * 2 ** attempt, MAX_RETRY_MS))
+      const delay = Math.min(500 * 2 ** attempt, MAX_RETRY_MS)
       attempt += 1
+      const stalled = attempt >= STALLED_AFTER
+      update(() => ({ connected: false, stalled }))
+      retry = setTimeout(connect, delay)
     }
 
     // Grants last about 60 s, so every attempt fetches a new one.
@@ -66,7 +71,7 @@ export function usePermit(id: string): { permit: PermitApplication | null; conne
         const frame = JSON.parse(event.data) as Frame
         if (frame.type === 'state') {
           attempt = 0
-          update(() => ({ connected: true, missing: false }))
+          update(() => ({ connected: true, missing: false, stalled: false }))
         }
         update((prev) => ({ permit: mergeFrame(id, prev.permit, frame) }))
       })
@@ -81,5 +86,5 @@ export function usePermit(id: string): { permit: PermitApplication | null; conne
     }
   }, [id])
 
-  return live.id === id ? live : { permit: null, connected: false, missing: false }
+  return live.id === id ? live : initial(id)
 }

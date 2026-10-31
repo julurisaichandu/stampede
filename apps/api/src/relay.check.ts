@@ -161,7 +161,7 @@ let createReply: "conflict" | "broken" | "ok" = "broken"
 const sends: { key: string | undefined; path: string; body: any }[] = []
 const creates: string[] = []
 let invites = 0
-let failInvite = false
+let failInvite = 0
 const stub = createServer(async (req, res) => {
   const chunks: Buffer[] = []
   for await (const chunk of req) chunks.push(chunk)
@@ -182,10 +182,10 @@ const stub = createServer(async (req, res) => {
   }
   if (req.method === "POST" && /invite/.test(req.url ?? "")) {
     invites++
-    if (failInvite) {
-      res.statusCode = 503
+    if (failInvite-- > 0) {
+      res.statusCode = 403
       res.setHeader("content-type", "application/json")
-      return res.end(JSON.stringify({ ok: false, error: { code: "database_overloaded", message: "overloaded" } }))
+      return res.end(JSON.stringify({ ok: false, error: { code: "forbidden", message: "forbidden" } }))
     }
   }
   if (req.method === "POST" && req.url === "/v1/channels") {
@@ -239,14 +239,20 @@ assert.deepEqual(creates, ["broken", "conflict"])
 console.log("ok open rethrows other errors, a failed open retries, name_conflict is tolerated, success is memoized")
 
 createReply = "conflict"
-failInvite = true
+failInvite = 2
+invites = 0
 await assert.rejects(openPermitChannel("2"))
-assert.ok(invites > 0, "the stub saw the invite")
-failInvite = false
-const before = invites
+assert.equal(invites, 2, "one invite plus one retry, then give up")
+failInvite = 0
 await openPermitChannel("2")
-assert.equal(invites - before, 3)
-console.log("ok a failed invite rejects the open, and the retry invites all three again")
+assert.equal(invites - 2, 3)
+console.log("ok an invite failing twice rejects the open, and the next open invites all three again")
+
+failInvite = 1
+invites = 0
+await openPermitChannel("3")
+assert.equal(invites, 4)
+console.log("ok one failed invite is retried and the open succeeds")
 
 stub.closeAllConnections()
 stub.close()
