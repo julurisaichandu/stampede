@@ -41,7 +41,7 @@ This takes about 8 seconds.
 
 **Customer.** The chat shows a REVISION 2 SUBMITTED tag. The sheet changes to 42 in and Revision 2. The railing card flips to PASS and now reads "Your railing height works". The PRE-REVIEW COMPLETE stamp lands on the sheet, and the chat offers "Go to the packet".
 
-**Officer.** The header says Revision 2. Only Guard height reruns and flips to PASS. The other three keep their results. The feed shows "Zoning finished revision 2: nothing in its scope changed." and ends with "Pre-review complete. SJ-ZONING-01 and SJ-DETAIL-01 carry into the packet." The stepper finishes on Pre-review complete, and a green banner says "Carried into the packet: Rear setback, Ledger connection to the house."
+**Officer.** The header says Revision 2. Only Guard height reruns and flips to PASS. The other three keep their results. The feed shows "Zoning finished revision 2: nothing in its scope changed." and ends with "Pre-review complete. SJ-ZONING-01 and SJ-DETAIL-01 carry into the packet." The stepper finishes on Pre-review complete, and a green banner says "Carried into the packet: Rear setback, Ledger connection to the house." Those two items can appear in either order, here and in the feed.
 
 ## Step 5. Click Go to the packet
 
