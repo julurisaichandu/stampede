@@ -7,6 +7,7 @@
     "start": "tsx --env-file-if-exists=.env src/server.ts",
     "check:gis": "tsx src/gis.check.ts",
     "check:turn": "tsx --env-file=.env src/intake/turn.check.ts",
+    "check:plan": "tsx --env-file=.env src/intake/plan.check.ts",
     "check:demo": "tsx --env-file=.env src/demo.check.ts",
     "golden": "tsx --env-file=.env src/intake/golden.ts",
     "typecheck": "tsc --noEmit",

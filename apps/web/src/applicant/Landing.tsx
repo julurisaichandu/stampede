@@ -1,16 +1,19 @@
 import { useMemo, useRef, useState, type FormEvent, type KeyboardEvent } from 'react'
 import { emptyPermit } from '../../../api/contracts.ts'
-import { ApiError, createPermit, sendChat } from '../lib/api.ts'
+import { planLine } from '../../../api/src/api-types.ts'
+import { ApiError, createPermit, sendChat, sendPlan } from '../lib/api.ts'
 import { firstTurns } from '../lib/firstTurn.ts'
 import { morphTo } from '../lib/nav.ts'
+import { PlanAttach, PlanChip } from './PlanAttach.tsx'
 import { Sheet } from './Sheet.tsx'
 import './Landing.css'
 
 // No-break spaces keep the address whole when text-wrap balances the placeholder.
-const PLACEHOLDER = 'I want a backyard deck at 14630\u00A0Noble\u00A0Ave, San\u00A0Jose, about 16 by 12 feet.'
+const PLACEHOLDER = 'Or describe it: a backyard deck at 14630\u00A0Noble\u00A0Ave, San\u00A0Jose, about 16 by 12 feet.'
 
 export default function Landing() {
   const [text, setText] = useState('')
+  const [plan, setPlan] = useState<File | null>(null)
   const [opening, setOpening] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const input = useRef<HTMLTextAreaElement>(null)
@@ -19,8 +22,8 @@ export default function Landing() {
   async function start() {
     if (opening) return
     const words = text.trim()
-    if (!words) {
-      setError('Describe your deck first, in your own words.')
+    if (!words && !plan) {
+      setError('Upload your plans or describe your deck first.')
       input.current?.focus()
       return
     }
@@ -28,9 +31,10 @@ export default function Landing() {
     setError(null)
     try {
       const { id } = await createPermit()
-      const reply = sendChat(id, words)
+      const send = () => (plan ? sendPlan(id, plan, words) : sendChat(id, words))
+      const reply = send()
       reply.catch(() => {}) // The workspace reports this one. It only needs to never go unhandled.
-      firstTurns.set(id, { text: words, reply })
+      firstTurns.set(id, { text: plan ? planLine(plan.name, words) : words, typed: !plan, send, reply })
       morphTo(`/permits/${id}`)
     } catch (failure) {
       setOpening(false)
@@ -78,11 +82,20 @@ export default function Landing() {
           </h1>
 
           <p className="landing-lede">
-            Describe your deck. We pull your parcel from the city’s own records, check it against the real code, and
+            Upload your plans or describe your deck. We pull your parcel from the city’s own records, check it against the real code, and
             hand you a corrected draft packet in minutes.
           </p>
 
           <form className="landing-composer card vt-composer" onSubmit={onSubmit}>
+            {plan ? (
+              <PlanChip
+                name={plan.name}
+                onRemove={() => {
+                  setPlan(null)
+                  input.current?.focus()
+                }}
+              />
+            ) : null}
             <textarea
               ref={input}
               className="landing-input"
@@ -96,6 +109,7 @@ export default function Landing() {
               onKeyDown={onKeyDown}
             />
             <div className="landing-actions">
+              <PlanAttach onPick={setPlan} onProblem={setError} disabled={opening} />
               <button className="btn btn-primary landing-submit" type="submit" disabled={opening}>
                 {opening ? 'Opening your file…' : 'Start my pre-review'}
               </button>

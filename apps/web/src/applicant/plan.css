@@ -1,0 +1,78 @@
+.chat-composer {
+  flex-wrap: wrap;
+}
+
+.btn.plan-attach {
+  flex: none;
+  gap: 6px;
+  padding-inline: 12px;
+  color: var(--ink-2);
+}
+
+.btn.plan-attach:hover:not(:disabled) {
+  border-color: var(--ink-3);
+}
+
+.plan-chip {
+  order: -1;
+  flex-basis: 100%;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  min-width: 0;
+  max-width: 100%;
+  padding-left: 12px;
+  border: 1px solid var(--line);
+  border-radius: 10px;
+  background: var(--paper);
+}
+
+.plan-chip-name {
+  flex: 1;
+  min-width: 0;
+  overflow: hidden;
+  color: var(--ink);
+  font: 500 14px/1.3 var(--font-ui);
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.plan-chip-remove {
+  flex: none;
+  min-width: 44px;
+  min-height: 44px;
+  padding: 0 12px;
+  border: 0;
+  border-radius: 10px;
+  background: none;
+  color: var(--rust-deep);
+  font: 600 14px/1.2 var(--font-ui);
+  cursor: pointer;
+}
+
+.plan-problem {
+  margin: 8px 32px 0;
+}
+
+.msg-plan {
+  display: block;
+  font-weight: 600;
+}
+
+@media (max-width: 959px) {
+  .plan-problem {
+    margin-inline: var(--gutter);
+  }
+}
+
+/* Beside the field at phone width the label would squeeze it, so the button keeps only the clip. */
+@media (max-width: 480px) {
+  .chat-composer .plan-attach {
+    width: 44px;
+    padding-inline: 0;
+  }
+
+  .chat-composer .plan-attach-label {
+    display: none;
+  }
+}

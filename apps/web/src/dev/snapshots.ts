@@ -31,7 +31,7 @@ const revisedDeck: Deck = { ...fullDeck, guardHeightIn: 42 }
 
 const say = (role: ChatMessage['role'], time: string, content: string): ChatMessage => ({ role, content, at: at(time) })
 
-const greeting = say('assistant', '19:51', "Tell me about the deck you want to build. I'll start with the address.")
+const greeting = say('assistant', '19:51', "Upload your plans and I'll read them. No plans yet? Tell me about the deck you want to build, starting with the address.")
 const firstAsk = say('user', '19:52', 'I want a backyard deck at 14630 Noble Ave, San Jose, about 16 by 12 feet.')
 const firstReply = say(
   'assistant',

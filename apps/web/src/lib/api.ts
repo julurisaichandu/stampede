@@ -3,6 +3,7 @@ import type {
   CreatePermitResponse,
   LookupRequest,
   LookupResponse,
+  PlanRequest,
   ReviewOk,
 } from '../../../api/src/api-types.ts'
 
@@ -25,6 +26,8 @@ const TOO_SLOW = 'stampede is taking too long to answer. Try again in a moment.'
 // The server's slowest honest paths: chat is model plus GIS, review is a channel open plus a Relay post.
 const CHAT_TIMEOUT_MS = 45_000
 const REVIEW_TIMEOUT_MS = 90_000
+// A plan read can run about 100 seconds, so the client outlasts it and hears the server's own answer.
+const PLAN_TIMEOUT_MS = 120_000
 
 async function post<T>(path: string, body?: unknown, timeoutMs = CHAT_TIMEOUT_MS): Promise<T> {
   let res: Response
@@ -54,6 +57,22 @@ const permitPath = (id: string, route: string) => `/api/permits/${encodeURICompo
 
 export const createPermit = () => post<CreatePermitResponse>('/api/permits')
 export const sendChat = (id: string, text: string) => post<ChatResponse>(permitPath(id, 'chat'), { text })
+
+function readBase64(file: File) {
+  return new Promise<string>((resolve, reject) => {
+    const reader = new FileReader()
+    reader.onload = () => resolve(String(reader.result).split(',')[1] ?? '')
+    reader.onerror = () =>
+      reject(new ApiError({ status: 0, retryable: false, message: "We couldn't read that file. Attach it again.", body: null }))
+    reader.readAsDataURL(file)
+  })
+}
+
+export async function sendPlan(id: string, file: File, note: string) {
+  const body: PlanRequest = { name: file.name, data: await readBase64(file), note }
+  return post<ChatResponse>(permitPath(id, 'plan'), body, PLAN_TIMEOUT_MS)
+}
+
 export const chooseCandidate = (id: string, body: LookupRequest) =>
   post<LookupResponse>(permitPath(id, 'lookup'), body)
 export const runReview = (id: string) => post<ReviewOk>(permitPath(id, 'review'), undefined, REVIEW_TIMEOUT_MS)

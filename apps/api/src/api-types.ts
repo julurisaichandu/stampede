@@ -24,6 +24,15 @@ export type GisLookup = {
 export type CreatePermitResponse = { id: string }
 export type ChatRequest = { text: string }
 export type ChatResponse = { reply: string; lookup: GisLookup | null }
+
+// JSON, not multipart: a cross-site form can post multipart with no preflight. Files never reach the actor.
+export const MAX_PLAN_BYTES = 10 * 1024 * 1024
+export const PLAN_TYPES = ["application/pdf", "image/png", "image/jpeg", "image/webp"] as const
+export type PlanType = (typeof PLAN_TYPES)[number]
+export type PlanRequest = { name: string; data: string; note: string } // data is base64 with no "data:" prefix
+export const planLine = (name: string, note: string) =>
+  [`Attached plan: ${name.trim().replace(/\s+/g, " ")}`, note].filter(Boolean).join("\n")
+
 export type LookupRequest = { address: string; apn: string | null }
 export type LookupResponse = { reply: string; lookup: GisLookup }
 export type ReviewOk = { status: PermitStatus }

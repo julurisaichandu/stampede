@@ -14,31 +14,44 @@ import {
 } from "../contracts.ts"
 import { actors } from "../generated/index.js"
 import { permitActor } from "./actor.ts"
-import type {
-  ApiFailure,
-  ChatResponse,
-  CreatePermitResponse,
-  GisLookup,
-  LookupResponse,
-  ReviewBlocked,
-  ReviewOk,
-  SocketGrant,
+import {
+  MAX_PLAN_BYTES,
+  planLine,
+  type ApiFailure,
+  type ChatResponse,
+  type CreatePermitResponse,
+  type GisLookup,
+  type LookupResponse,
+  type ReviewBlocked,
+  type ReviewOk,
+  type SocketGrant,
 } from "./api-types.ts"
 import { lookup } from "./gis.ts"
 import { explainFindings } from "./intake/explain.ts"
+import { planMime, readPlanTurn } from "./intake/plan.ts"
 import { composeReply, nextQuestion, readUserTurn, type Turn } from "./intake/turn.ts"
 import { onNeedsInput, openPermitChannel, post, relayMode } from "./relay.ts"
 
 const PORT = 8787
 const HOST = "127.0.0.1" // Vite proxies here. Anything wider lets the venue wifi spend Relay and OpenAI calls.
 const MAX_BODY_BYTES = 16 * 1024
+const MAX_PLAN_BODY_BYTES = (MAX_PLAN_BYTES * 4) / 3 + 64 * 1024
 const PERMIT_ID = /^[A-Za-z0-9._-]+$/
-const GREETING = "Tell me about the deck you want to build. I'll start with the address."
+const GREETING = "Upload your plans and I'll read them. No plans yet? Tell me about the deck you want to build, starting with the address."
 const REVIEWERS_UNREACHABLE =
   "I couldn't reach the reviewers with your revision. Send me any message and I'll try again."
 
 const ChatBody = z.object({ text: z.string().trim().min(1).max(2000) })
 const LookupBody = z.object({ address: z.string().trim().min(1).max(300), apn: z.string().min(1).max(32).nullable() })
+const PlanBody = z.object({
+  name: z.string().trim().min(1).max(300), // above every filesystem's name limit, so no real file can fail it
+  data: z
+    .string()
+    .min(1)
+    .max(Math.ceil((MAX_PLAN_BYTES * 4) / 3) + 4)
+    .regex(/^[A-Za-z0-9+/]+={0,2}$/),
+  note: z.string().trim().max(2000),
+})
 const FindingIds = z.array(z.string())
 
 const assistant = (content: string, at = new Date().toISOString()): ChatMessage => ({ role: "assistant", content, at })
@@ -105,12 +118,16 @@ async function explainMissed(id: string) {
   if (corrections.length) await actor.appendChat(assistant(await explainFindings(corrections), moved.at))
 }
 
-async function chatTurn(id: string, text: string): Promise<ChatResponse> {
+async function chatTurn(
+  id: string,
+  text: string,
+  read: (loaded: Pick<PermitApplication, "chat" | "property">) => Promise<Turn> = ({ chat }) => readUserTurn(chat, text),
+): Promise<ChatResponse> {
   const actor = permitActor(id)
   await explainMissed(id)
-  const { chat } = await load(id)
+  const loaded = await load(id)
   await actor.appendChat({ role: "user", content: text, at: new Date().toISOString() })
-  const turn = await readUserTurn(chat, text)
+  const turn = await read(loaded)
 
   // Read after the model call: Clerk can move the status while it runs.
   let permit = await actor.read()
@@ -221,13 +238,15 @@ app.onError((err, c) => {
   return c.json<ApiFailure>({ error: "Something went wrong on our side. Please try again.", retryable: true }, 500)
 })
 app.notFound((c) => c.json<ApiFailure>({ error: "Not found.", retryable: false }, 404))
-app.use(
-  "/api/*",
-  bodyLimit({
-    maxSize: MAX_BODY_BYTES,
-    onError: (c) => c.json<ApiFailure>({ error: "That message is too long.", retryable: false }, 413),
-  }),
-)
+const messageLimit = bodyLimit({
+  maxSize: MAX_BODY_BYTES,
+  onError: (c) => c.json<ApiFailure>({ error: "That message is too long.", retryable: false }, 413),
+})
+const planLimit = bodyLimit({
+  maxSize: MAX_PLAN_BODY_BYTES,
+  onError: (c) => c.json<ApiFailure>({ error: "That file is too large. Send a plan under 10 MB.", retryable: false }, 413),
+})
+app.use("/api/*", (c, next) => (c.req.path.endsWith("/plan") ? planLimit : messageLimit)(c, next))
 
 app.post("/api/permits", async (c) => {
   const id = randomUUID()
@@ -245,6 +264,17 @@ app.post("/api/permits/:id/chat", async (c) => {
   const id = permitId(c)
   const { text } = await readBody(c, ChatBody)
   return c.json<ChatResponse>(await serial(id, () => chatTurn(id, text)))
+})
+
+app.post("/api/permits/:id/plan", async (c) => {
+  const id = permitId(c)
+  const { name, data, note } = await readBody(c, PlanBody)
+  const mime = planMime(data)
+  if (!mime) throw new HTTPException(415, { message: "Send your plan as a PDF, PNG, JPEG or WebP." })
+  const reply = await serial(id, () =>
+    chatTurn(id, planLine(name, note), (permit) => readPlanTurn({ mime, base64: data }, note, permit.property?.address ?? null)),
+  )
+  return c.json<ChatResponse>(reply)
 })
 
 app.post("/api/permits/:id/lookup", async (c) => {

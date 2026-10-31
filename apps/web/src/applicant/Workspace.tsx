@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState } from 'react'
 import { emptyPermit, type PermitApplication } from '../../../api/contracts.ts'
-import type { GisCandidate, GisLookup } from '../../../api/src/api-types.ts'
-import { ApiError, chooseCandidate, runReview, sendChat } from '../lib/api.ts'
+import { planLine, type GisCandidate, type GisLookup } from '../../../api/src/api-types.ts'
+import { ApiError, chooseCandidate, runReview, sendChat, sendPlan } from '../lib/api.ts'
 import { firstTurns } from '../lib/firstTurn.ts'
 import { usePermit } from '../lib/usePermit.ts'
 import { CandidatePicker } from './CandidatePicker.tsx'
@@ -18,9 +18,10 @@ const TURN_FAILED = "That didn't go through. Your message is safe here, so try a
 const MAX_MESSAGE = 2000
 const REVIEW_FAILED = "The reviewers couldn't be reached. Nothing was lost, so try again."
 
-// Status 0 and the 422 question are already plain English. The server's other errors may not be.
+// Status 0, the 422 question and the 413 and 415 file limits are already plain English, and
+// retrying those limits cannot help. The server's other errors may not be plain.
 function plain(failure: unknown, fallback: string) {
-  return failure instanceof ApiError && (failure.status === 0 || failure.status === 422) ? failure.message : fallback
+  return failure instanceof ApiError && [0, 413, 415, 422].includes(failure.status) ? failure.message : fallback
 }
 
 const POINTERS: Partial<Record<GisLookup['status'], string>> = {
@@ -53,6 +54,7 @@ export function WorkspaceView({
   reviewing = false,
   reviewError = null,
   onSend = noop,
+  onSendPlan = noop,
   onRetry = noop,
   onChoose = noop,
   onRun = noop,
@@ -69,6 +71,7 @@ export function WorkspaceView({
   reviewing?: boolean
   reviewError?: string | null
   onSend?: (text: string) => void
+  onSendPlan?: (file: File, note: string) => void
   onRetry?: () => void
   onChoose?: (candidate: GisCandidate) => void
   onRun?: () => void
@@ -152,6 +155,7 @@ export function WorkspaceView({
             permitId={permit.id}
             pointer={openLookup ? (POINTERS[openLookup.status] ?? null) : null}
             onSend={onSend}
+            onSendPlan={onSendPlan}
             onRetry={onRetry}
           />
         </section>
@@ -196,7 +200,7 @@ export default function Workspace({ id }: { id: string }) {
   const [turn, setTurn] = useState<Turn | null>(() => {
     const first = firstTurns.get(id)
     if (!first) return null
-    return { text: first.text, base: 0, inFlight: true, error: null, typed: true, send: () => sendChat(id, first.text) }
+    return { text: first.text, base: 0, inFlight: true, error: null, typed: first.typed, send: first.send }
   })
 
   async function track(reply: Promise<{ lookup: GisLookup | null }>) {
@@ -238,13 +242,19 @@ export default function Workspace({ id }: { id: string }) {
   const answered = userAt >= 0 && since.slice(userAt).some((message) => message.role === 'assistant')
 
   // A line that never reached the server exists only in this turn, so it travels with the next one.
+  const held = turn?.typed && turn.error && userAt < 0 ? turn.text : null
+
   function sendTyped(text: string) {
-    const held = turn?.typed && turn.error && userAt < 0 ? turn.text : null
     if (!held) return begin(text, true, () => sendChat(id, text))
     const both = `${held}\n${text}`
     begin(both, true, () =>
       both.length <= MAX_MESSAGE ? sendChat(id, both) : sendChat(id, held).then(() => sendChat(id, text)),
     )
+  }
+
+  function sendAttached(file: File, note: string) {
+    const words = `${held ?? ''}\n${note}`.trim().slice(0, MAX_MESSAGE)
+    begin(planLine(file.name, words), false, () => sendPlan(id, file, words))
   }
 
   // Render the full shell on the first frame, even with no state yet. The landing morph
@@ -263,6 +273,7 @@ export default function Workspace({ id }: { id: string }) {
       reviewing={reviewing}
       reviewError={reviewError}
       onSend={sendTyped}
+      onSendPlan={sendAttached}
       onRetry={() => turn && begin(turn.text, turn.typed, turn.send)}
       onChoose={(candidate) =>
         begin(candidate.address, false, () => chooseCandidate(id, { address: candidate.address, apn: candidate.apn }))

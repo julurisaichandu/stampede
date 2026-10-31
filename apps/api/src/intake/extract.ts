@@ -1,12 +1,13 @@
-import OpenAI, { APIConnectionTimeoutError, APIError, RateLimitError } from "openai"
+import OpenAI, { APIConnectionTimeoutError, APIError, BadRequestError, RateLimitError } from "openai"
 import { zodTextFormat } from "openai/helpers/zod"
+import type { ResponseCreateParamsNonStreaming } from "openai/resources/responses/responses"
 import { ZodError } from "zod"
 import { IntakeTurn } from "./schema.ts"
 
 export type TurnMessage = { role: "user" | "assistant"; content: string }
 export type IntakeResult =
   | { ok: true; turn: IntakeTurn }
-  | { ok: false; reason: "refused" | "incomplete" | "invalid" | "busy" | "unavailable"; detail?: string }
+  | { ok: false; reason: "refused" | "incomplete" | "invalid" | "busy" | "unavailable" | "unreadable"; detail?: string }
 
 const MODEL = process.env.OPENAI_INTAKE_MODEL ?? "gpt-6-luna"
 const format = zodTextFormat(IntakeTurn, "intake_turn")
@@ -35,20 +36,12 @@ Reply rules:
 - Never say a deck passes, fails, is compliant, is approved or needs a permit. Reviewers decide that. If asked, say the pre-review will check it.
 - If the project is not a residential backyard deck in San Jose, use intent "off_topic" and say you only handle those.`
 
-export async function extractTurn(messages: TurnMessage[]): Promise<IntakeResult> {
+export async function parseTurn(
+  body: Pick<ResponseCreateParamsNonStreaming, "instructions" | "input" | "reasoning" | "max_output_tokens">,
+  options: { timeout: number; maxRetries: number },
+): Promise<IntakeResult> {
   try {
-    const res = await client.responses.parse(
-      {
-        model: MODEL,
-        store: false,
-        instructions: INSTRUCTIONS,
-        input: messages,
-        reasoning: { effort: "none" },
-        max_output_tokens: 1200,
-        text: { format },
-      },
-      { timeout: 15_000, maxRetries: 1 },
-    )
+    const res = await client.responses.parse({ ...body, model: MODEL, store: false, text: { format } }, options)
     if (res.status === "incomplete") return { ok: false, reason: "incomplete", detail: res.incomplete_details?.reason }
     for (const item of res.output) {
       if (item.type !== "message") continue
@@ -58,7 +51,15 @@ export async function extractTurn(messages: TurnMessage[]): Promise<IntakeResult
   } catch (e) {
     if (e instanceof ZodError || e instanceof SyntaxError) return { ok: false, reason: "invalid", detail: e.message }
     if (e instanceof RateLimitError) return { ok: false, reason: "busy" }
+    if (e instanceof BadRequestError) return { ok: false, reason: "unreadable", detail: e.message }
     if (e instanceof APIConnectionTimeoutError || e instanceof APIError) return { ok: false, reason: "unavailable", detail: e.message }
     throw e
   }
+}
+
+export function extractTurn(messages: TurnMessage[]): Promise<IntakeResult> {
+  return parseTurn(
+    { instructions: INSTRUCTIONS, input: messages, reasoning: { effort: "none" }, max_output_tokens: 1200 },
+    { timeout: 15_000, maxRetries: 1 },
+  )
 }

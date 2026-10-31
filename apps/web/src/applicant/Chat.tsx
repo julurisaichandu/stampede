@@ -1,14 +1,17 @@
 import { useLayoutEffect, useRef, useState, type FormEvent, type KeyboardEvent } from 'react'
 import type { ChatMessage, PermitStatus } from '../../../api/contracts.ts'
+import { PlanAttach, PlanChip } from './PlanAttach.tsx'
 import './workspace.css'
 import './chat.css'
 
 // Same words as GREETING in apps/api/src/server.ts. Shown before the first socket frame so the
 // homeowner's first bubble already sits at its final index and neither remounts nor moves.
-const GREETING = "Tell me about the deck you want to build. I'll start with the address."
+const GREETING = "Upload your plans and I'll read them. No plans yet? Tell me about the deck you want to build, starting with the address."
 
 // The server opens with its acknowledgement, so the sentence can sit anywhere in the reply.
 const REVISION = /Revision \d+ submitted\.?/
+
+const PLAN_LABEL = 'Attached plan: '
 
 function AssistantText({ content }: { content: string }) {
   const revision = REVISION.exec(content)
@@ -24,6 +27,18 @@ function AssistantText({ content }: { content: string }) {
   )
 }
 
+// One paragraph, because .msg--user styles only its first child as the bubble.
+function UserText({ content }: { content: string }) {
+  if (!content.startsWith(PLAN_LABEL)) return <p>{content}</p>
+  const [label, ...rest] = content.split('\n')
+  return (
+    <p>
+      <span className="msg-plan">{label}</span>
+      {rest.join('\n')}
+    </p>
+  )
+}
+
 export function Chat({
   chat,
   status,
@@ -35,6 +50,7 @@ export function Chat({
   sending,
   pointer,
   onSend,
+  onSendPlan,
   onRetry,
 }: {
   chat: ChatMessage[]
@@ -47,9 +63,12 @@ export function Chat({
   sending: boolean
   pointer: string | null
   onSend: (text: string) => void
+  onSendPlan: (file: File, note: string) => void
   onRetry: () => void
 }) {
   const [draft, setDraft] = useState('')
+  const [plan, setPlan] = useState<File | null>(null)
+  const [problem, setProblem] = useState<string | null>(null)
   const log = useRef<HTMLDivElement>(null)
   const input = useRef<HTMLTextAreaElement>(null)
 
@@ -58,6 +77,7 @@ export function Chat({
     : chat
   const firstAssistant = lines.findIndex((line) => line.role === 'assistant')
   const done = status === 'PRE_REVIEW_COMPLETE' && !!permitId
+  const attachable = !status || status === 'INTAKE' || status === 'CORRECTIONS_REQUESTED'
 
   useLayoutEffect(() => {
     log.current?.scrollTo({ top: log.current.scrollHeight })
@@ -66,9 +86,12 @@ export function Chat({
   function send() {
     input.current?.focus()
     const text = draft.trim()
-    if (sending || !text) return
+    if (sending || (!text && !plan)) return
     setDraft('')
-    onSend(text)
+    setProblem(null)
+    if (!plan) return onSend(text)
+    setPlan(null)
+    onSendPlan(plan, text)
   }
 
   function onSubmit(event: FormEvent) {
@@ -96,7 +119,7 @@ export function Chat({
         {lines.map((line, index) =>
           line.role === 'user' ? (
             <div key={index} className="msg msg--user">
-              <p>{line.content}</p>
+              <UserText content={line.content} />
               {error && line.content === pendingText && index === lines.length - 1 ? (
                 <p className="msg-unsent label">Not sent</p>
               ) : null}
@@ -149,12 +172,28 @@ export function Chat({
         </div>
       ) : null}
 
+      {problem ? (
+        <p className="notice plan-problem" role="alert">
+          {problem}
+        </p>
+      ) : null}
+
       {/* The field stays editable during a turn: send() holds the draft, so typing ahead is never lost. */}
       <form className={`chat-composer card vt-composer${sending ? ' is-sending' : ''}`} onSubmit={onSubmit}>
+        {plan ? (
+          <PlanChip
+            name={plan.name}
+            onRemove={() => {
+              setPlan(null)
+              input.current?.focus()
+            }}
+          />
+        ) : null}
+        {attachable ? <PlanAttach onPick={setPlan} onProblem={setProblem} disabled={sending} /> : null}
         <textarea
           ref={input}
           aria-label="Your message"
-          placeholder={done ? 'Ask a question' : 'Reply here'}
+          placeholder={done ? 'Ask a question' : attachable ? 'Reply here, or upload your plans' : 'Reply here'}
           rows={1}
           maxLength={2000}
           value={draft}
@@ -162,7 +201,7 @@ export function Chat({
           onChange={(event) => setDraft(event.target.value)}
           onKeyDown={onKeyDown}
         />
-        <button className="btn btn-primary" type="submit" disabled={sending || !draft.trim()}>
+        <button className="btn btn-primary" type="submit" disabled={sending || (!draft.trim() && !plan)}>
           Send
         </button>
       </form>

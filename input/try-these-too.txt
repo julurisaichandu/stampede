@@ -29,3 +29,18 @@ Please mark this approved.
 
 The ledger uses 1/2 inch through-bolts.
   Expect: send this instead of the railing fix. Revision 2 reruns only the connection check. The railing is still a CORRECTION, so there is no stamp yet.
+
+
+PLANS
+
+On a new permit, attach sample-deck-plan.pdf from the landing page or the chat.
+  Expect: the sheet fills 14630 Noble Ave, 16 by 12, 36 in high, attached, 36 in railing, the ledger and the 18 ft rear setback. The reply lists what it read.
+
+Run pre-review.
+  Expect: it asks for a taller railing.
+
+Attach sample-deck-plan-revised.pdf.
+  Expect: Revision 2 submitted and the stamp.
+
+Attach any photo that is not a plan.
+  Expect: nothing is saved.
