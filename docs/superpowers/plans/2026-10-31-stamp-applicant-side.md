@@ -67,6 +67,7 @@ We tested the PDF's assumptions against the real systems at 12:06.
 | Bun available | Bun is not on this Mac | Install it in Task 0 |
 | Relay docs page and `@next` | The docs page shows old v7. `next` is older than `latest` | Pin `15.0.1`. Read the package's `.d.ts`. Pass the key and base URL in code |
 | `init --hosted` key just works | That key can live on a host the SDK does not default to | `ar_ws_` keys need `https://armadillo.agentrelay.com`. `rk_live_` keys use the default |
+| Relay posts are fast | Every write takes 2.5 to 6 s on the server, measured at 13:00 on a raw POST too | Post bound is 12 s, not 4 s. The channel opens at permit creation. `REVISION_SUBMITTED` does not block the chat reply |
 | Patch plus confidence map from the model | Strict mode rejects maps and plain optionals | One `{status, value, confidence}` slot per field. Code builds the patch |
 | Geocoder covers San Jose only | A Cupertino address scores 100 | Require score of at least 90 and `City` of San Jose |
 | One clean result per address | Street-only matches miss zoning. A typo gives two candidates | Show candidates and let the homeowner choose. Never auto-pick |
@@ -160,7 +161,7 @@ Each task ends in a check. The next task starts only after that check passes. Ta
 - [ ] Add `POST /api/permits`, `GET /api/permits/:id`, `POST /api/permits/:id/chat`, `POST /api/permits/:id/lookup`, `POST /api/permits/:id/review` and `POST /api/permits/:id/socket`.
 - [ ] In `/chat`, append the user message, extract, validate, and look up the address when stated. Then branch on status. `INTAKE` calls `applyIntakePatch`. `CORRECTIONS_REQUESTED` calls `submitRevision` and posts `REVISION_SUBMITTED`. Any other status writes nothing.
 - [ ] Mint browser grants with `role: "viewer"` only, with `Cache-Control: no-store`.
-- [ ] Bound Relay posts with a 4 s timeout. On failure, `/review` returns a retryable error, and a retry reuses the same `relayKey`.
+- [ ] Bound Relay posts with a 12 s timeout, because a real post takes 2.5 to 6 s. On failure, `/review` returns a retryable error, and a retry reuses the same `relayKey`.
 - [ ] Fire one warm-up parse at server start, because the first request with a schema is slower.
 - [ ] Check: a script runs the demo chat over HTTP and `read()` shows 16, 12, 36, 36 with an empty missing list. A second `/review` causes no new write.
 
@@ -230,7 +231,10 @@ Paste this to Kris.
    - Delivery is at-least-once. Dedupe in the actor on `relayKey`, not in memory.
    - Post at the channel top level. Replies in threads arrive as a different event.
    - Run agents under Node. The SDK under Bun is unverified.
-   - Intake creates `#permit-<id>` and invites `clerk`, `building` and `zoning`.
+   - Intake creates `#permit-<id>` when the permit is created and invites `clerk`, `building` and `zoning`.
+   - Measured live at 13:00 on a throwaway workspace. Every Relay write takes 2.5 to 6 s, and one call failed and worked on retry. Write to the actor first, then post, and never hold a status change or a card on a post. Post findings concurrently, or four sequential posts cost about 16 s on stage.
+   - Also measured. An invited agent receives with no `join`. `metadata` survives delivery. The same `idempotencyKey` is deduped by the server. A sender does not hear its own posts. A second `channels.create` rejects with `name_conflict`.
+   - `changedFields` holds paths such as `deck.guardHeightIn`, the same form as `Finding.field`.
 7. Rules.
    - `SJ-PERMIT-01` has five conditions. Add "serves as a door landing", and say 30 in "at any point".
    - `CRC-GUARD-01` cites 2025 CRC R321.1.1 and R321.1.2, never R312. Guard trigger is `> 30`. Permit trigger is `>= 30`. Do not share a constant. Do not apply 42 in to stair guards.
@@ -254,10 +258,7 @@ Supabase keys are not needed on this side.
 
 | Unverified | Why it matters | Proved in |
 | --- | --- | --- |
-| `gpt-6-luna` accepts the schema, and its speed | No key was available | Task 0, first live call |
-| Extraction accuracy on the demo sentences | Same | Task 2 |
-| Relay end to end with a real key | Nothing ran against live Relay | Task 5 |
-| Invited agent receives without `join` | Clerk may miss `REVIEW_REQUEST` | Task 5 |
+| Relay with Kris's real key and his host | A throwaway workspace on the default host worked. His key may be `ar_ws_` on a different host | Task 5 |
 | A real browser on the actor WebSocket | The prototype used Node | Task 4 |
 | Phone or second laptop | Forwarder tested from this Mac only | Stretch |
 | Noble Ave is a single-family parcel | It is not. GIS has no land-use field | Say so if asked |

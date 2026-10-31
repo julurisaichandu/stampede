@@ -1,0 +1,159 @@
+.stepper {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  min-width: 0;
+  margin: 0 0 0 auto;
+  padding: 0;
+  list-style: none;
+  font: 500 13px/1.2 var(--font-ui);
+  color: var(--ink-3);
+  white-space: nowrap;
+}
+
+.stepper li {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+}
+
+.stepper li + li::before {
+  content: '';
+  width: 18px;
+  height: 1px;
+  margin-right: 3px;
+  background: var(--line);
+}
+
+.stepper-mark {
+  display: grid;
+  place-items: center;
+  width: 20px;
+  height: 20px;
+  border: 1px solid var(--line);
+  border-radius: 50%;
+  font: 600 11px/1 var(--font-mono);
+}
+
+.stepper .is-done {
+  color: var(--ink-2);
+}
+
+.stepper [aria-current] {
+  color: var(--ink);
+  font-weight: 600;
+}
+
+.stepper [aria-current] .stepper-mark {
+  border-color: var(--rust-deep);
+  background: var(--rust);
+  color: var(--paper-raised);
+}
+
+@media (max-width: 1099px) {
+  .stepper li:not([aria-current]) {
+    display: none;
+  }
+
+  .stepper li::before {
+    display: none;
+  }
+}
+
+.findings {
+  display: grid;
+  gap: 12px;
+  /* Room for a flipping card to swell past the column without a sideways scrollbar. */
+  margin-inline: -16px;
+  padding-inline: 16px;
+  overflow-x: clip;
+  animation: findings-open 420ms var(--ease) both;
+}
+
+.findings h2 {
+  margin-top: 8px;
+  font-size: 22px;
+  line-height: 1.2;
+}
+
+.finding-slot {
+  perspective: 1400px;
+  scroll-margin-block: 16px 96px;
+}
+
+.finding {
+  display: grid;
+  gap: 12px;
+  padding: 16px 18px;
+  border-left: 3px solid var(--status, var(--line));
+  transform-origin: 50% 50%;
+}
+
+.finding-head {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.finding-head h3 {
+  font-size: 19px;
+  line-height: 1.25;
+}
+
+.finding-body {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
+  gap: 12px 20px;
+}
+
+.finding-text {
+  margin-top: 4px;
+  font-size: 15px;
+  line-height: 1.45;
+  color: var(--ink-2);
+}
+
+.finding-foot {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 6px 16px;
+  padding-top: 10px;
+  border-top: 1px dashed var(--line);
+  font-size: 12px;
+  line-height: 1.4;
+}
+
+.finding-meta {
+  display: inline-flex;
+  gap: 12px;
+}
+
+.finding--out {
+  animation: finding-out 200ms var(--ease-slam) both;
+}
+
+.finding--in {
+  animation: finding-in 480ms var(--ease) both;
+}
+
+@keyframes finding-out {
+  to {
+    transform: rotateX(90deg);
+  }
+}
+
+@keyframes finding-in {
+  from {
+    transform: rotateX(-90deg);
+  }
+}
+
+@keyframes findings-open {
+  from {
+    opacity: 0;
+    translate: 0 12px;
+  }
+}

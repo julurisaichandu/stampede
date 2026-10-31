@@ -1,0 +1,106 @@
+@import '@fontsource/ibm-plex-mono/700.css';
+
+.stamp-defs {
+  position: absolute;
+}
+
+/* The resting state lives here, so a refresh and reduced motion both land on it with no animation. */
+.stamp {
+  position: absolute;
+  z-index: 2;
+  right: 18px;
+  bottom: 10px;
+  max-width: calc(100% - 28px);
+  rotate: -3deg;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  padding: 13px 24px 11px;
+  border: 9px double var(--rust);
+  border-radius: 10px;
+  color: var(--rust);
+  font: 700 clamp(22px, 2.1vw, 30px) / 1.1 var(--font-mono);
+  letter-spacing: 0.12em;
+  filter: url(#stamp-ink);
+  mix-blend-mode: multiply;
+  opacity: 0.94;
+  pointer-events: none;
+}
+
+@media (prefers-reduced-motion: no-preference) {
+  .stamp--slam {
+    animation: stamp-slam 240ms var(--ease-slam) 420ms both;
+  }
+
+  .sheet-stack:has(.stamp--slam) {
+    animation: stack-shake 260ms linear 660ms;
+  }
+
+  .sheet-stack:has(.stamp--slam) ~ .packet-card {
+    animation: packet-card-rise 420ms var(--ease) 880ms both;
+  }
+}
+
+@keyframes stamp-slam {
+  from {
+    scale: 1.9;
+    opacity: 0;
+  }
+  70% {
+    opacity: 0.94;
+  }
+  to {
+    scale: 1;
+    opacity: 0.94;
+  }
+}
+
+@keyframes stack-shake {
+  0%,
+  100% {
+    translate: 0 0;
+  }
+  20% {
+    translate: 2px 3px;
+  }
+  45% {
+    translate: -2px -1px;
+  }
+  70% {
+    translate: 1px 1px;
+  }
+}
+
+@keyframes packet-card-rise {
+  from {
+    opacity: 0;
+    translate: 0 12px;
+  }
+}
+
+.packet-card {
+  display: grid;
+  gap: 12px;
+  padding: 20px 22px;
+  border-left: 3px solid var(--rust);
+}
+
+.packet-card-open {
+  justify-self: start;
+  min-height: 48px;
+  font-size: 16px;
+}
+
+.packet-card-items {
+  display: grid;
+  gap: 6px;
+  margin: 0;
+  padding-left: 18px;
+  color: var(--ink-2);
+  font-size: 15px;
+}
+
+.packet-card-clear {
+  color: var(--ink-2);
+  font-size: 15px;
+}

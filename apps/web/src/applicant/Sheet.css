@@ -1,0 +1,368 @@
+.sheet {
+  position: relative;
+  padding: 26px 26px 22px;
+  background: var(--paper-raised);
+  border: 1px solid var(--line);
+  border-radius: 3px;
+  color: var(--ink);
+}
+
+.sheet-head {
+  display: flex;
+  justify-content: space-between;
+  align-items: baseline;
+  gap: 12px;
+  padding-bottom: 10px;
+  border-bottom: 2px solid var(--ink);
+}
+
+.sheet-head .label {
+  color: var(--ink);
+  font-weight: 600;
+}
+
+.sheet-title {
+  margin: 14px 0 18px;
+  font-size: 30px;
+  line-height: 1.05;
+  font-weight: 460;
+  font-variation-settings: 'opsz' 72, 'SOFT' 40, 'WONK' 1;
+  letter-spacing: -0.02em;
+}
+
+.sheet-part {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin-top: 18px;
+  font: 500 12px/1 var(--font-ui);
+  color: var(--ink-2);
+}
+
+.sheet-part b {
+  padding: 4px 7px;
+  background: var(--ink);
+  color: var(--paper-raised);
+  font: 600 10px/1 var(--font-mono);
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+.sheet-grid {
+  display: grid;
+  grid-template-columns: repeat(6, minmax(0, 1fr));
+  margin-top: 8px;
+  border-top: 1px solid var(--ink);
+  border-left: 1px solid var(--line);
+}
+
+.sheet-cell {
+  grid-column: span var(--span, 2);
+  min-height: 62px;
+  padding: 8px 10px 9px;
+  border-right: 1px solid var(--line);
+  border-bottom: 1px solid var(--line);
+}
+
+.sheet-cell dt {
+  font: 500 10px/1.3 var(--font-mono);
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--ink-3);
+}
+
+.sheet-cell dd {
+  margin: 8px 0 0;
+  font: 500 15px/1.3 var(--font-mono);
+  font-variant-numeric: tabular-nums;
+}
+
+.sheet-unknown {
+  display: inline-block;
+  color: var(--ink-3);
+  font-size: 12px;
+  font-weight: 400;
+  letter-spacing: 0.06em;
+  border-bottom: 1px dashed var(--ink-3);
+}
+
+.sheet-unsure {
+  display: block;
+  margin-top: 3px;
+  font: italic 400 12px/1.2 var(--font-display);
+  font-variation-settings: var(--axes-voice);
+  color: var(--ink-2);
+}
+
+.sheet-value {
+  display: inline-block;
+  min-height: 1.3em;
+  margin-inline: -3px;
+  padding-inline: 3px;
+  border-radius: 2px;
+}
+
+.sheet-value.is-fresh {
+  animation: sheet-ink 1900ms var(--ease) both;
+}
+
+.sheet-caret {
+  display: inline-block;
+  width: 2px;
+  height: 1em;
+  margin-left: 1px;
+  vertical-align: -0.14em;
+  background: var(--rust);
+}
+
+@keyframes sheet-ink {
+  0%,
+  45% {
+    background-color: color-mix(in srgb, var(--rust) 17%, transparent);
+    color: var(--rust-deep);
+  }
+  100% {
+    background-color: transparent;
+    color: var(--ink);
+  }
+}
+
+.sheet-revision {
+  overflow: hidden;
+  white-space: nowrap;
+}
+
+.sheet-tick {
+  display: inline-block;
+  animation: sheet-tick 620ms var(--ease) both;
+}
+
+@keyframes sheet-tick {
+  0% {
+    transform: translateY(110%);
+    color: var(--rust);
+  }
+  55% {
+    transform: none;
+    color: var(--rust);
+  }
+  100% {
+    transform: none;
+  }
+}
+
+.match {
+  margin-top: 8px;
+  padding: 12px 14px 11px;
+}
+
+.match--drop {
+  animation: match-drop 560ms var(--ease) both;
+}
+
+@keyframes match-drop {
+  0% {
+    opacity: 0;
+    transform: translateY(-16px) rotate(-0.7deg);
+  }
+  70% {
+    opacity: 1;
+  }
+  100% {
+    opacity: 1;
+    transform: none;
+  }
+}
+
+.match-head {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
+}
+
+.match-head .label {
+  margin-right: auto;
+  color: var(--rust-deep);
+  font-weight: 600;
+}
+
+.match-address {
+  margin-top: 6px;
+  font: 460 19px/1.25 var(--font-display);
+  font-variation-settings: var(--axes-title);
+  letter-spacing: -0.005em;
+}
+
+.match-facts {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px 28px;
+  margin: 10px 0 0;
+}
+
+.match-facts dd {
+  margin: 2px 0 0;
+  font: 500 15px/1.3 var(--font-mono);
+  font-variant-numeric: tabular-nums;
+}
+
+.match-source {
+  margin-top: 9px;
+  font: 400 11px/1.3 var(--font-mono);
+  color: var(--ink-3);
+}
+
+.picker {
+  margin-top: 14px;
+  padding: 16px;
+}
+
+.picker-title {
+  font-size: 22px;
+  line-height: 1.15;
+}
+
+.picker-list {
+  display: grid;
+  gap: 8px;
+  margin-top: 12px;
+}
+
+.picker-option {
+  display: grid;
+  align-content: center;
+  gap: 4px;
+  width: 100%;
+  min-height: 58px;
+  padding: 12px 14px;
+  border: 1px solid var(--ink-3);
+  border-radius: 10px;
+  background: var(--paper);
+  text-align: left;
+  transition:
+    border-color 160ms var(--ease),
+    background-color 160ms var(--ease),
+    transform 120ms var(--ease);
+}
+
+.picker-option:hover:not(:disabled) {
+  border-color: var(--rust);
+  background: var(--paper-raised);
+}
+
+.picker-option:active:not(:disabled) {
+  transform: translateY(1px);
+}
+
+.picker-option:disabled {
+  cursor: progress;
+  opacity: 0.6;
+}
+
+.picker-address {
+  font: 600 16px/1.3 var(--font-ui);
+}
+
+.picker-meta {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px 16px;
+  font: 400 12px/1.3 var(--font-mono);
+  color: var(--ink-2);
+}
+
+/* Sticky stops at the column's 40px padding, so the negative offsets close that gap. The band matches the column tint. */
+.run-review {
+  --band: color-mix(in srgb, var(--ink) 2.2%, var(--paper));
+  position: sticky;
+  bottom: -40px;
+  z-index: 2;
+  margin-bottom: -40px;
+  padding-block: 18px 52px;
+  background: linear-gradient(to bottom, transparent, var(--band) 18px);
+}
+
+@media (max-width: 959px) {
+  .run-review {
+    bottom: 0;
+    margin-bottom: 0;
+    padding-bottom: 12px;
+  }
+}
+
+.run-review-btn {
+  width: 100%;
+  min-height: 60px;
+  padding-inline: 20px;
+  border-radius: 12px;
+  font-size: 17px;
+}
+
+.run-review-btn:not(:disabled) {
+  box-shadow: 0 14px 26px -16px var(--rust-deep);
+}
+
+.run-review-btn:disabled:not(.is-reviewing) {
+  font-size: 15px;
+  font-weight: 500;
+}
+
+.run-review-btn.is-reviewing:disabled {
+  border-color: var(--rust-deep);
+  color: var(--paper-raised);
+  cursor: progress;
+  background: linear-gradient(100deg, var(--rust) 30%, #bd4a35 50%, var(--rust) 70%) 0 0 / 220% 100%;
+  animation: pill-shimmer 1.7s linear infinite;
+}
+
+.run-review-error {
+  margin-top: 8px;
+}
+
+.run-review-retry {
+  padding: 0;
+  border: 0;
+  background: none;
+  color: var(--rust);
+  font-weight: 600;
+  text-decoration: underline;
+  text-underline-offset: 0.18em;
+}
+
+.sheet-foot {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 150px;
+  gap: 16px;
+  align-items: end;
+  margin-top: 18px;
+}
+
+.sheet-foot p {
+  font-size: 12px;
+  line-height: 1.45;
+  color: var(--ink-3);
+}
+
+.sheet-stamp-box {
+  height: 76px;
+  padding: 7px 9px;
+  border: 1px dashed var(--ink-3);
+}
+
+.sheet-stamp-box span {
+  display: block;
+  font: 500 10px/1.3 var(--font-mono);
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--ink-3);
+}
+
+/* The stamp takes the slot, and the wider column keeps the footnote clear of it. */
+.sheet-stack:has(.stamp) .sheet-foot {
+  grid-template-columns: minmax(0, 1fr) min(300px, 60%);
+}
+
+.sheet-stack:has(.stamp) .sheet-stamp-box {
+  visibility: hidden;
+}

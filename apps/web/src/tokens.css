@@ -1,0 +1,366 @@
+@import '@fontsource-variable/fraunces/full.css';
+@import '@fontsource-variable/fraunces/full-italic.css';
+@import '@fontsource/ibm-plex-sans/400.css';
+@import '@fontsource/ibm-plex-sans/500.css';
+@import '@fontsource/ibm-plex-sans/600.css';
+@import '@fontsource/ibm-plex-mono/400.css';
+@import '@fontsource/ibm-plex-mono/500.css';
+@import '@fontsource/ibm-plex-mono/600.css';
+
+:root {
+  color-scheme: light;
+
+  --paper: #f3f0e7;
+  --paper-raised: #fbf9f3;
+  --ink: #1b1a16;
+  --ink-2: #4f4c43;
+  --ink-3: #6a665b;
+  --line: #dcd7c9;
+  --rust: #a8321f;
+  --rust-deep: #8f2a1a;
+
+  --pass: #2c6b47;
+  --pass-bg: #dfebdd;
+  --correction: #a8321f;
+  --correction-bg: #f6dcd4;
+  --needs-info: #7c5a0e;
+  --needs-info-bg: #f5e7c3;
+  --needs-human: #2f4f6f;
+  --needs-human-bg: #dce5ee;
+
+  --font-display: 'Fraunces Variable', 'Iowan Old Style', Georgia, serif;
+  --font-ui: 'IBM Plex Sans', system-ui, sans-serif;
+  --font-mono: 'IBM Plex Mono', ui-monospace, 'SF Mono', Menlo, monospace;
+
+  /* Set wght with font-weight. These hold the axes font-weight cannot reach. */
+  --axes-hero: 'opsz' 144, 'SOFT' 40, 'WONK' 1;
+  --axes-title: 'opsz' 48, 'SOFT' 30, 'WONK' 1;
+  --axes-voice: 'opsz' 18, 'SOFT' 20, 'WONK' 0;
+
+  --radius: 14px;
+  --shadow-card: 0 1px 0 rgba(27, 26, 22, 0.04), 0 18px 40px -28px rgba(27, 26, 22, 0.28);
+  --ease: cubic-bezier(0.2, 0.8, 0.2, 1);
+  --ease-slam: cubic-bezier(0.7, 0, 0.84, 0);
+  --gutter: 16px;
+
+  --grain: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='220' height='220'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='.8' numOctaves='2' stitchTiles='stitch'/%3E%3CfeColorMatrix values='0 0 0 0 .1 0 0 0 0 .09 0 0 0 0 .07 0 0 0 .16 -.05'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E");
+}
+
+*,
+*::before,
+*::after {
+  box-sizing: border-box;
+}
+
+html {
+  -webkit-text-size-adjust: 100%;
+  background: var(--paper);
+}
+
+body {
+  margin: 0;
+  min-height: 100dvh;
+  background: var(--paper) var(--grain);
+  color: var(--ink);
+  font: 400 16px/1.5 var(--font-ui);
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+  text-rendering: optimizeLegibility;
+  overflow-x: hidden;
+}
+
+h1,
+h2,
+h3,
+p {
+  margin: 0;
+}
+
+h1,
+h2,
+h3 {
+  font-family: var(--font-display);
+  font-weight: 500;
+  font-variation-settings: var(--axes-title);
+  letter-spacing: -0.01em;
+  text-wrap: balance;
+}
+
+p {
+  text-wrap: pretty;
+}
+
+a {
+  color: var(--rust);
+  text-underline-offset: 0.18em;
+}
+
+button,
+input,
+textarea {
+  font: inherit;
+  color: inherit;
+}
+
+button {
+  cursor: pointer;
+}
+
+textarea {
+  caret-color: var(--rust);
+}
+
+::selection {
+  background: var(--correction-bg);
+  color: var(--ink);
+}
+
+::placeholder {
+  color: var(--ink-3);
+  opacity: 1;
+}
+
+:focus {
+  outline: none;
+}
+
+:focus-visible {
+  outline: 2px solid var(--rust);
+  outline-offset: 2px;
+  border-radius: 4px;
+}
+
+/* One card style everywhere. */
+.card {
+  background: var(--paper-raised);
+  border: 1px solid var(--line);
+  border-radius: var(--radius);
+  box-shadow: var(--shadow-card);
+}
+
+.label {
+  font: 500 11px/1.3 var(--font-mono);
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--ink-3);
+}
+
+.mono {
+  font-family: var(--font-mono);
+}
+
+.num {
+  font-variant-numeric: tabular-nums lining-nums;
+}
+
+.voice {
+  font-family: var(--font-display);
+  font-size: 18px;
+  line-height: 1.45;
+  font-weight: 400;
+  font-variation-settings: var(--axes-voice);
+}
+
+.wordmark {
+  font-family: var(--font-display);
+  font-size: 24px;
+  line-height: 1;
+  font-weight: 560;
+  letter-spacing: -0.03em;
+  font-variation-settings: 'opsz' 72, 'SOFT' 50, 'WONK' 1;
+  color: var(--ink);
+  text-decoration: none;
+}
+
+.sr-only {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  margin: -1px;
+  overflow: hidden;
+  clip-path: inset(50%);
+  white-space: nowrap;
+}
+
+/* Status colors appear only on pills and card edges. */
+.pill {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 3px 9px;
+  border-radius: 999px;
+  font: 600 11px/1.4 var(--font-mono);
+  letter-spacing: 0.06em;
+  white-space: nowrap;
+  color: var(--status);
+  background: var(--status-bg);
+}
+
+.pill--pass,
+.status-pass {
+  --status: var(--pass);
+  --status-bg: var(--pass-bg);
+}
+
+.pill--correction,
+.status-correction {
+  --status: var(--correction);
+  --status-bg: var(--correction-bg);
+}
+
+.pill--needs-info,
+.status-needs-info {
+  --status: var(--needs-info);
+  --status-bg: var(--needs-info-bg);
+}
+
+.pill--needs-human,
+.status-needs-human {
+  --status: var(--needs-human);
+  --status-bg: var(--needs-human-bg);
+}
+
+.pill--reviewing {
+  --status: var(--ink-3);
+  --status-bg: var(--line);
+  background: linear-gradient(100deg, var(--line) 30%, var(--paper-raised) 50%, var(--line) 70%) 0 0 / 220% 100%;
+  animation: pill-shimmer 1.5s linear infinite;
+}
+
+@keyframes pill-shimmer {
+  to {
+    background-position: -220% 0;
+  }
+}
+
+/* Small factual tag, such as "demo cached data" or an overlay name. */
+.chip {
+  display: inline-flex;
+  align-items: center;
+  padding: 2px 7px;
+  border: 1px solid var(--line);
+  border-radius: 6px;
+  font: 500 11px/1.4 var(--font-mono);
+  color: var(--ink-2);
+  background: var(--paper);
+}
+
+.btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  min-height: 44px;
+  padding: 10px 18px;
+  border: 1px solid var(--line);
+  border-radius: 10px;
+  background: var(--paper-raised);
+  color: var(--ink);
+  font: 600 15px/1.2 var(--font-ui);
+  text-decoration: none;
+  transition:
+    background-color 160ms var(--ease),
+    transform 120ms var(--ease);
+}
+
+.btn:active:not(:disabled) {
+  transform: translateY(1px);
+}
+
+.btn:disabled {
+  cursor: not-allowed;
+}
+
+.btn-primary {
+  border-color: var(--rust-deep);
+  background: var(--rust);
+  color: var(--paper-raised);
+}
+
+.btn-primary:hover:not(:disabled) {
+  background: var(--rust-deep);
+}
+
+.btn-primary:disabled {
+  border-color: var(--line);
+  background: var(--line);
+  color: var(--ink-2);
+}
+
+/* Plain-English notice for errors and reconnecting. */
+.notice {
+  color: var(--rust-deep);
+  font-size: 14px;
+  line-height: 1.45;
+}
+
+.empty-screen {
+  display: grid;
+  place-content: center;
+  justify-items: start;
+  gap: 14px;
+  min-height: 100dvh;
+  max-width: 34rem;
+  margin-inline: auto;
+  padding: var(--gutter);
+}
+
+.empty-screen h1 {
+  font-size: clamp(32px, 6vw, 44px);
+  line-height: 1.08;
+}
+
+.empty-screen p {
+  color: var(--ink-2);
+}
+
+/* The landing morph. Apply each to exactly one element per screen, or the transition aborts. */
+.vt-composer {
+  view-transition-name: composer;
+}
+
+.vt-sheet {
+  view-transition-name: sheet;
+}
+
+::view-transition-group(composer),
+::view-transition-group(sheet) {
+  animation-duration: 640ms;
+  animation-timing-function: var(--ease);
+}
+
+/* The hero clears before the chat arrives, so the two never overlap. */
+::view-transition-old(root) {
+  animation-duration: 180ms;
+  animation-timing-function: var(--ease);
+}
+
+::view-transition-new(root) {
+  animation-duration: 340ms;
+  animation-delay: 140ms;
+  animation-timing-function: var(--ease);
+}
+
+/* Matched timing keeps plus-lighter at full opacity, so these stay solid in flight. */
+::view-transition-old(sheet),
+::view-transition-new(sheet),
+::view-transition-old(composer),
+::view-transition-new(composer) {
+  animation-duration: 220ms;
+  animation-timing-function: linear;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after,
+  ::view-transition-group(*),
+  ::view-transition-old(*),
+  ::view-transition-new(*) {
+    animation-duration: 0.01ms !important;
+    animation-delay: 0ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
+  }
+}

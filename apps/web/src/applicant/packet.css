@@ -1,0 +1,375 @@
+.packet {
+  display: grid;
+  justify-items: center;
+  gap: 20px;
+  padding: 18px var(--gutter) 64px;
+}
+
+.packet-toolbar {
+  display: flex;
+  align-items: center;
+  gap: 20px;
+  width: min(100%, 860px);
+}
+
+.packet-back {
+  margin-right: auto;
+  font-size: 15px;
+}
+
+/* A sheet of letter paper, so square corners rather than the app's card. */
+.packet-doc {
+  width: min(100%, 860px);
+  padding: 0 clamp(20px, 6vw, 68px) 44px;
+  background: var(--paper-raised);
+  border: 1px solid var(--line);
+  box-shadow:
+    0 1px 0 rgba(27, 26, 22, 0.05),
+    6px 6px 0 -1px var(--paper-raised),
+    6px 6px 0 0 var(--line),
+    0 30px 60px -40px rgba(27, 26, 22, 0.4);
+}
+
+.packet-watermark {
+  display: none;
+}
+
+.packet-banner {
+  margin-inline: calc(-1 * clamp(20px, 6vw, 68px));
+  padding: 11px 16px;
+  background: var(--rust);
+  color: var(--paper-raised);
+  font: 600 13px/1.35 var(--font-mono);
+  letter-spacing: 0.14em;
+  text-align: center;
+}
+
+.packet-title {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-end;
+  gap: 24px 40px;
+  flex-wrap: wrap;
+  padding: 40px 0 22px;
+  border-bottom: 3px double var(--ink);
+}
+
+.packet-title h1 {
+  margin-top: 8px;
+  font-size: clamp(34px, 5vw, 46px);
+  line-height: 1.05;
+  font-weight: 480;
+  letter-spacing: -0.02em;
+  font-variation-settings: var(--axes-hero);
+}
+
+.packet-project {
+  margin-top: 6px;
+  color: var(--ink-2);
+  font-size: 17px;
+}
+
+.packet-meta {
+  display: grid;
+  gap: 10px;
+  margin: 0;
+}
+
+.packet-meta dd {
+  margin: 2px 0 0;
+  font-size: 14px;
+}
+
+.packet-doc section {
+  margin-top: 30px;
+  counter-increment: packet-section;
+}
+
+.packet-doc {
+  counter-reset: packet-section;
+}
+
+.packet-doc section > h2 {
+  display: flex;
+  align-items: baseline;
+  gap: 10px;
+  margin-bottom: 12px;
+  font-size: 22px;
+  line-height: 1.2;
+  break-after: avoid;
+}
+
+.packet-doc section > h2::before {
+  content: counter(packet-section);
+  color: var(--rust);
+  font: 600 13px/1 var(--font-mono);
+}
+
+.packet-form {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  margin: 0;
+  border-top: 1px solid var(--ink);
+  border-left: 1px solid var(--ink);
+  break-inside: avoid;
+}
+
+.packet-form > div {
+  min-width: 0;
+  padding: 7px 10px 8px;
+  border-right: 1px solid var(--ink);
+  border-bottom: 1px solid var(--ink);
+}
+
+.packet-form .packet-form-wide {
+  grid-column: 1 / -1;
+}
+
+.packet-form dd {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 4px 8px;
+  margin: 2px 0 0;
+  font-size: 15px;
+  font-weight: 500;
+}
+
+.packet-form .packet-unknown {
+  color: var(--ink-3);
+  font: 500 13px/1.5 var(--font-mono);
+}
+
+.packet-unknown span {
+  font-family: var(--font-ui);
+  font-weight: 400;
+}
+
+.packet-form .packet-source {
+  font-size: 13px;
+  font-weight: 400;
+}
+
+.packet-findings,
+.packet-checklist {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.packet-finding {
+  display: grid;
+  gap: 4px;
+  padding: 13px 0 14px;
+  border-bottom: 1px solid var(--line);
+  break-inside: avoid;
+}
+
+.packet-finding:first-child {
+  border-top: 1px solid var(--ink);
+}
+
+.packet-finding-head {
+  display: flex;
+  justify-content: space-between;
+  align-items: baseline;
+  gap: 12px;
+  flex-wrap: wrap;
+}
+
+.packet-finding h3 {
+  font-size: 18px;
+  line-height: 1.3;
+}
+
+.packet-finding > p {
+  font-size: 15px;
+}
+
+.packet-doc .packet-cite {
+  display: flex;
+  justify-content: space-between;
+  gap: 4px 16px;
+  flex-wrap: wrap;
+  color: var(--ink-2);
+  font: 500 12px/1.5 var(--font-mono);
+}
+
+.packet-cite span {
+  color: var(--ink-3);
+  font-weight: 400;
+}
+
+.packet-url {
+  font: 400 11.5px/1.45 var(--font-mono);
+  overflow-wrap: anywhere;
+}
+
+.packet-checklist {
+  border-top: 1px solid var(--ink);
+}
+
+.packet-checklist li {
+  position: relative;
+  display: grid;
+  gap: 2px;
+  padding: 11px 0 12px 30px;
+  border-bottom: 1px solid var(--line);
+  break-inside: avoid;
+  font-size: 15px;
+}
+
+.packet-checklist li::before {
+  content: '';
+  position: absolute;
+  top: 14px;
+  left: 2px;
+  width: 15px;
+  height: 15px;
+  border: 1.5px solid var(--ink);
+  border-radius: 2px;
+}
+
+.packet-checklist strong {
+  font-weight: 600;
+}
+
+.packet-checklist span {
+  color: var(--ink-2);
+}
+
+.packet-steps {
+  margin: 0;
+  padding-left: 22px;
+  font-size: 15px;
+  break-inside: avoid;
+}
+
+.packet-steps li {
+  padding: 3px 0 3px 4px;
+}
+
+.packet-steps li::marker {
+  font: 600 13px var(--font-mono);
+  color: var(--rust);
+}
+
+.packet-foot {
+  margin-top: 34px;
+  padding-top: 12px;
+  border-top: 1px solid var(--line);
+  color: var(--ink-3);
+  font-size: 13px;
+}
+
+/* Named page, so a printed workspace keeps the browser's defaults. */
+@page packet {
+  size: letter;
+  margin: 0.8in 0.8in 0.75in;
+
+  @top-center {
+    content: 'UNOFFICIAL DRAFT — NOT FILED WITH THE CITY';
+    font: 600 9pt 'IBM Plex Mono', monospace;
+    letter-spacing: 0.1em;
+    color: #000;
+  }
+
+  @bottom-right {
+    content: 'Page ' counter(page) ' of ' counter(pages);
+    font: 400 8.5pt 'IBM Plex Mono', monospace;
+    color: #000;
+  }
+
+  @bottom-left {
+    content: 'stamp pre-review';
+    font: 400 8.5pt 'IBM Plex Mono', monospace;
+    color: #000;
+  }
+}
+
+/* The body banner covers page one. */
+@page packet:first {
+  @top-center {
+    content: none;
+  }
+}
+
+@media print {
+  html:has(.packet),
+  body:has(.packet) {
+    background: #fff;
+  }
+
+  .packet {
+    display: block;
+    padding: 0;
+
+    --ink: #000;
+    --ink-2: #000;
+    --ink-3: #333;
+    --line: #999;
+    --rust: #000;
+    --paper-raised: #fff;
+  }
+
+  .packet-toolbar {
+    display: none;
+  }
+
+  .packet-doc {
+    page: packet;
+    width: auto;
+    padding: 0;
+    border: 0;
+    box-shadow: none;
+    background: none;
+  }
+
+  .packet-banner {
+    margin: 0;
+    padding: 7px 8px;
+    border: 2px solid #000;
+    background: none;
+    color: #000;
+    font-size: 10.5pt;
+    font-weight: 600;
+  }
+
+  /* position: fixed repeats on every printed page. */
+  .packet-watermark {
+    display: block;
+    position: fixed;
+    z-index: 0;
+    top: 50%;
+    left: 50%;
+    translate: -50% -50%;
+    rotate: -45deg;
+    color: #000;
+    opacity: 0.07;
+    font: 600 56pt/1 var(--font-mono);
+    letter-spacing: 0.06em;
+    white-space: nowrap;
+    pointer-events: none;
+  }
+
+  .packet-title {
+    padding-top: 22px;
+  }
+
+  .packet .pill {
+    --status: #000;
+    --status-bg: #fff;
+    border: 1px solid #000;
+  }
+
+  .packet .chip {
+    border-color: #000;
+    color: #000;
+    background: #fff;
+  }
+
+  .packet a {
+    color: #000;
+    text-decoration: none;
+  }
+}
