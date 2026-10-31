@@ -118,7 +118,7 @@ export function WorkspaceView({
       </p>
       <header className="workspace-bar">
         <a className="wordmark" href="/">
-          stamp
+          stampede
         </a>
         <p className="workspace-project">
           Residential deck

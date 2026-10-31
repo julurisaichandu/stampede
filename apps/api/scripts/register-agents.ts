@@ -1,5 +1,5 @@
 // One-time Relay setup: creates the hosted workspace if apps/api/.env has no RELAY_WORKSPACE_KEY, then registers
-// the four stamped agents and saves their tokens to that file. Run under Node: npm run relay:register.
+// the four stampede agents and saves their tokens to that file. Run under Node: npm run relay:register.
 // Never prints a secret. Registration is create-only: an existing name keeps its old token (rotate it with the Relay CLI).
 import { existsSync, readFileSync, writeFileSync } from "node:fs"
 import { fileURLToPath } from "node:url"
@@ -30,8 +30,8 @@ if (process.env.RELAY_WORKSPACE_KEY) {
   console.log("using the workspace key already in apps/api/.env")
 } else {
   // Same call `agent-relay init --hosted` makes, without touching any coding tool's settings.
-  relay = await AgentRelay.createWorkspace({ name: "stamped", baseUrl: HOSTED }).catch(() =>
-    AgentRelay.createWorkspace({ name: `stamped-${Date.now().toString(36)}`, baseUrl: HOSTED }),
+  relay = await AgentRelay.createWorkspace({ name: "stampede", baseUrl: HOSTED }).catch(() =>
+    AgentRelay.createWorkspace({ name: `stampede-${Date.now().toString(36)}`, baseUrl: HOSTED }),
   )
   if (!relay.workspaceKey) throw new Error("The hosted service did not return a workspace key")
   save({ RELAY_WORKSPACE_KEY: relay.workspaceKey, RELAY_BASE_URL: HOSTED }) // saved first, so a later failure can't lose it

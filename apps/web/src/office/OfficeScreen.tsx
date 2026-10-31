@@ -1,4 +1,4 @@
-// stamped — the review office screen (/office/:id). Reads only the PermitActor: live state over a viewer socket,
+// stampede — the review office screen (/office/:id). Reads only the PermitActor: live state over a viewer socket,
 // the agents' conversation from relayLog, the audit trail from events. Never raw JSON, never an approval or a seal.
 import { useEffect, useRef, useState } from "react"
 
@@ -93,7 +93,7 @@ function Header({ permitId, state, connection }: { permitId: string; state: Perm
   return (
     <header className="office-header">
       <div>
-        <p className="eyebrow">stamp · San Jose pre-review office</p>
+        <p className="eyebrow">stampede · San Jose pre-review office</p>
         <h1>{state.property?.address ?? "Address not confirmed yet"}</h1>
         <p className="sub">
           Residential deck{facts.length > 0 && ` · ${facts.join(" · ")}`} · Application {permitId}

@@ -36,7 +36,7 @@ export default function Landing() {
       setOpening(false)
       setError(failure instanceof ApiError && failure.status !== 0
         ? "We couldn't open your file. Your description is still here, so try again in a moment."
-        : "We can't reach stamp right now. Your description is still here, so try again in a moment.")
+        : "We can't reach stampede right now. Your description is still here, so try again in a moment.")
     }
   }
 
@@ -62,7 +62,7 @@ export default function Landing() {
       </svg>
 
       <header className="landing-bar">
-        <span className="wordmark">stamp</span>
+        <span className="wordmark">stampede</span>
       </header>
 
       <main className="landing-main">
@@ -108,7 +108,7 @@ export default function Landing() {
             </p>
           ) : (
             <p className="landing-note">
-              stamp is a pre-review. It files nothing, and the City of San José still issues your permit.
+              stampede is a pre-review. It files nothing, and the City of San José still issues your permit.
             </p>
           )}
         </section>

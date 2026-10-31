@@ -1,10 +1,10 @@
-# stamp
+# stampede
 
-stamp runs the city's review before you submit.
+stampede runs the city's review before you submit.
 
-A San Jose homeowner describes a backyard deck in chat. stamp reads the address, pulls the real parcel and zoning from the city's GIS, and hands the application to three review agents. They check it against the adopted code, talk over Agent Relay, and write their findings to one durable record. The homeowner fixes corrections in the same chat and leaves with a draft packet.
+A San Jose homeowner describes a backyard deck in chat. stampede reads the address, pulls the real parcel and zoning from the city's GIS, and hands the application to three review agents. They check it against the adopted code, talk over Agent Relay, and write their findings to one durable record. The homeowner fixes corrections in the same chat and leaves with a draft packet.
 
-stamp files nothing. The packet is marked UNOFFICIAL DRAFT — NOT FILED WITH THE CITY, the stamp reads PRE-REVIEW COMPLETE, and a person at the city still makes the decision.
+stampede files nothing. The packet is marked UNOFFICIAL DRAFT — NOT FILED WITH THE CITY, the stamp reads PRE-REVIEW COMPLETE, and a person at the city still makes the decision.
 
 Built at Haunted Hacks, Real-Time AI Edition, on October 31, 2026.
 
@@ -61,16 +61,26 @@ scripts/dev.sh
 
 `scripts/dev.sh local` runs the same Clerk, Building, and Zoning agents inside the API with no Relay keys. Use it if Relay is down.
 
+If `scripts/dev.sh` says the actors did not start, check `services/actors/.env` and `apps/api/.env`. Older copies of the example files set port 7111. Both must use 7100.
+
 After you change the actor's methods, run this with the actor running:
 
 ```sh
 (cd services/actors && bunx durable-actors generate --out-dir ../../apps/api/generated)
 ```
 
-## What stamp refuses to do
+## Try it
+
+The `input` folder has everything for a run:
+
+- `input/customer-chat.txt` has the exact lines to type. Only the customer types. The officer screen has no input.
+- `input/expected-output.md` shows what the customer and officer screens should show at each step.
+- `input/try-these-too.txt` tests what stampede refuses to do.
+
+## What stampede refuses to do
 
 - It never invents a permit number, a city seal, or a city sign-off.
 - It never fills in a missing value. A value the homeowner does not know stays UNKNOWN.
 - It never auto-picks a parcel. When the city returns more than one match, the homeowner chooses.
 - It shows "demo cached data" if the city GIS is down and the demo address falls back to its recorded response. Any other address gets an honest failure message.
-- It returns NEEDS HUMAN VERIFICATION with the missing source when a rule cannot be verified. stamp states no rear setback for an attached deck, because the source was not verified.
+- It returns NEEDS HUMAN VERIFICATION with the missing source when a rule cannot be verified. stampede states no rear setback for an attached deck, because the source was not verified.

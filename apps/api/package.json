@@ -1,5 +1,5 @@
 {
-  "name": "stamp-api",
+  "name": "stampede-api",
   "private": true,
   "type": "module",
   "scripts": {

@@ -19,8 +19,8 @@ export class ApiError extends Error {
   }
 }
 
-const UNREACHABLE = "We can't reach stamp right now. Check your connection and try again."
-const TOO_SLOW = 'stamp is taking too long to answer. Try again in a moment.'
+const UNREACHABLE = "We can't reach stampede right now. Check your connection and try again."
+const TOO_SLOW = 'stampede is taking too long to answer. Try again in a moment.'
 
 // The server's slowest honest paths: chat is model plus GIS, review is a channel open plus a Relay post.
 const CHAT_TIMEOUT_MS = 45_000

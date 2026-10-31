@@ -1,0 +1,20 @@
+Type these into the customer chat, one at a time. Wait for each reply.
+What each step should show is in expected-output.md.
+
+1. Paste this:
+
+I want a backyard deck at 14630 Noble Ave, San Jose, about 16 by 12 feet.
+
+2. Paste this:
+
+attached, about 36 inches high, railing 36 inches.
+
+3. Click Run pre-review. Wait for the chat to explain the railing.
+
+4. Paste this:
+
+I'll make the railing 42 inches.
+
+5. Click Go to the packet.
+
+The officer side has no input. It only shows what the customer's chat causes.

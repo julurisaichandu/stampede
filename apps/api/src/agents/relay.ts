@@ -1,4 +1,4 @@
-// stamped — thin Agent Relay layer. One connection per agent; envelopes out (with their relayLog line) and in
+// stampede — thin Agent Relay layer. One connection per agent; envelopes out (with their relayLog line) and in
 // (deduped in the PermitActor, so redelivery and restarts are safe). Relay is for talking; the actor remembers.
 import { setTimeout as sleep } from "node:timers/promises"
 
@@ -58,7 +58,12 @@ async function relayWire(name: AgentName): Promise<Wire> {
   return {
     client,
     post: (envelope, key) =>
-      client.sendMessage({ to: `#${permitChannel(envelope.permitId)}`, text: JSON.stringify(envelope), metadata: envelope, idempotencyKey: key }),
+      client
+        .sendMessage({ to: `#${permitChannel(envelope.permitId)}`, text: JSON.stringify(envelope), metadata: envelope, idempotencyKey: key })
+        .catch((error) => {
+          // A retry carries a new timestamp, so Relay reports the key as reused. That means the first post landed.
+          if (error?.rawCode !== "idempotency_key_reused") throw error
+        }),
     say: (permitId, text) => client.sendMessage({ to: `#${permitChannel(permitId)}`, text }),
     listen(dispatch) {
       // Live events need Relay's broker ("node transport"), which this process does not run, and an invite does not

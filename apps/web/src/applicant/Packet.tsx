@@ -146,7 +146,7 @@ export function PacketView({ permit }: { permit: PermitApplication }) {
     <main className="packet">
       <header className="packet-toolbar">
         <a className="wordmark" href="/">
-          stamp
+          stampede
         </a>
         <a className="packet-back" href={fileHref}>
           Back to your file
@@ -236,7 +236,7 @@ export function PacketView({ permit }: { permit: PermitApplication }) {
           </ol>
         </section>
 
-        <p className="packet-foot">stamp is a pre-review. It files nothing, and the City of San José still issues your permit.</p>
+        <p className="packet-foot">stampede is a pre-review. It files nothing, and the City of San José still issues your permit.</p>
       </article>
     </main>
   )

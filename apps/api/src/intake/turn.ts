@@ -13,7 +13,7 @@ const HISTORY = 12
 const NO_FACTS: TurnFacts = { address: null, deck: {}, unknown: [], invalid: [] }
 
 const SCOPE =
-  "stamp only handles pre-reviews for a new residential backyard deck on a single-family parcel in San Jose."
+  "stampede only handles pre-reviews for a new residential backyard deck on a single-family parcel in San Jose."
 const VERDICT = /\b(approv\w*|pass(es|ed|ing)?|compliant|complies|fails?)\b/i
 const REVIEWERS_DECIDE = "Only the reviewers can decide that, and the pre-review will check it."
 
@@ -100,7 +100,7 @@ function lookupSentence(lookup: GisLookup | null): string {
     case "needs_confirm":
       return "The city's records show more than one possible match. Please choose yours in the file."
     case "out_of_city":
-      return "That address looks like it is outside San Jose, and stamp only covers San Jose."
+      return "That address looks like it is outside San Jose, and stampede only covers San Jose."
     case "not_found":
       return "I couldn't find that address in the city's records."
     case "unavailable":

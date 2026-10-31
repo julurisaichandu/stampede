@@ -1,4 +1,4 @@
-// stamped — deterministic rules. No LLM in here. The model only explains these results.
+// stampede — deterministic rules. No LLM in here. The model only explains these results.
 // Rules read the Clerk's frozen copy of the deck, never the live draft. null means not provided, never a default.
 // Citations came from the applicant side's research. Check them against the sources before they appear on stage.
 import type { Deck, Finding, PermitApplication, Property } from "../contracts.ts"
@@ -9,7 +9,7 @@ const SRC = {
     citation: "San Jose Decks page",
   },
   crc: {
-    url: "https://www.dgs.ca.gov/bsc/codes",
+    url: "https://up.codes/viewer/california/ca-residential-code-2025/chapter/3/building-planning",
     citation: "2025 CRC R321.1.1, R321.1.2",
   },
   sjForm352: {
@@ -17,7 +17,7 @@ const SRC = {
     citation: "San Jose Form 352 plan set instructions",
   },
   sjZoning: {
-    url: "https://www.sanjoseca.gov/businesses/development-services-permit-center/start-your-project/design-considerations",
+    url: "https://library.municode.com/ca/san_jose/codes/code_of_ordinances",
     citation: "San Jose Municipal Code Ch. 20.30, Table 20-60 (§20.30.200), §20.30.400",
   },
 }

@@ -58,5 +58,5 @@ fi
 pids+=($!)
 wait_for web 5173
 
-echo "stamp is running at http://localhost:5173"
+echo "stampede is running at http://localhost:5173"
 wait

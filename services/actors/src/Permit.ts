@@ -1,4 +1,4 @@
-// stamped — PermitActor. One instance per permit id (the actor id); the single durable record agents write decisions to.
+// stampede — PermitActor. One instance per permit id (the actor id); the single durable record agents write decisions to.
 // Relay is for talking. This is for remembering. Screens read only this.
 import { Actor, type ActorSocket, Emittable, Persisted } from "durable-actors"
 

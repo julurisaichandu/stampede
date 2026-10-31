@@ -115,7 +115,7 @@ export function Chat({
               <i aria-hidden="true" />
               <i aria-hidden="true" />
               <i aria-hidden="true" />
-              <span className="sr-only">stamp is writing</span>
+              <span className="sr-only">stampede is writing</span>
             </p>
           </div>
         ) : null}

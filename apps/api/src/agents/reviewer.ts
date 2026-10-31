@@ -1,4 +1,4 @@
-// stamped — Building and Zoning agents. On the Clerk's REVIEW_REQUEST they run their rules on the frozen revision,
+// stampede — Building and Zoning agents. On the Clerk's REVIEW_REQUEST they run their rules on the frozen revision,
 // record each finding in the PermitActor, post it on Relay, then report REVIEW_COMPLETE. They never change status.
 import { actors } from "../../generated/index.js"
 import { Finding } from "../../contracts.ts"

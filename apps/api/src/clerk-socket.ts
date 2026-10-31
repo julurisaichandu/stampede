@@ -1,4 +1,4 @@
-// stamped — the Clerk's line to the PermitActor. The actor has no status RPC: status moves only over a socket whose
+// stampede — the Clerk's line to the PermitActor. The actor has no status RPC: status moves only over a socket whose
 // grant carries role "clerk". Grants are signed with DURABLE_ACTORS_SECRET, so only this backend can mint one.
 // Browser-facing routes must never mint role "clerk".
 import { actors } from "../generated/index.js"

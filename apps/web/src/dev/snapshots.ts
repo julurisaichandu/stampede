@@ -74,7 +74,7 @@ const permitRule = finding(1, {
   field: 'deck.attached',
   observed: true,
   required: null,
-  reason: 'Permit required: 36 in above ground, attached to a dwelling.',
+  reason: 'A building permit is required: 36 in above grade (≥ 30 in at any point), attached to the dwelling.',
   citation: 'San Jose Decks page',
   sourceUrl: DECKS_PAGE,
   evidence: ['A deck installation, replacement, or repair requires a building permit if any of these conditions apply.'],

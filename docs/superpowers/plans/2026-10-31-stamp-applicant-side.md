@@ -81,7 +81,7 @@ The contract gains `chat`, `revisions`, `relayLog`, `citation`, `unknownFields`,
 
 - **Demo address.** 14630 Noble Ave, San Jose. Noble House Neighborhood Center, R-1-8, score 100, APN 59531001. It is a public site standing in for a home, so no family's house goes on stage. Say so if asked. Do not improvise another address, because 10 of 10 tried from memory came back PQP.
 - **Machine.** This Mac runs the actor, API, web and agents from 13:15, and records the video.
-- **Name.** The screen says stamp, never Stampede.
+- **Name.** The screen says stampede, the same as the repo.
 - **Routes.** `/revise` is dropped. `/chat` handles corrections by status, so one input path stays simple. `/lookup` remains only for choosing a candidate. Kris is not affected, because the handoff is the Relay message.
 - **`packetUrl`.** Dropped. The link is always `/permits/:id/packet` and the page renders from the actor.
 - **Next question.** Code picks it from a table keyed by the first missing field. The model writes only the short acknowledgement. One question at a time holds by construction.
@@ -175,10 +175,10 @@ Each task ends in a check. The next task starts only after that check passes. Ta
 
 ### Task 5. Integrate with Kris (13:15 to 14:00)
 
-- [ ] Merge both sides. Run `bunx durable-actors dev` and `bunx durable-actors generate` on this Mac.
-- [ ] Register `intake`, `clerk`, `building` and `zoning` once. Store the tokens. Servers call `workspace.reconnect` on boot, because a second `register` fails with `name_conflict`.
-- [ ] Run a Relay hello-world with the real key. Confirm the base URL, whether an invited agent receives without `join`, and whether `metadata` survives delivery.
-- [ ] Check: Run pre-review reaches `CORRECTIONS_REQUESTED` with all four rules on both screens. No manual step. **First full run by 14:00.** If it fails, take the PDF's cut and make Zoning a static NEEDS HUMAN VERIFICATION.
+- [x] Merge both sides. Run `bunx durable-actors dev` and `bunx durable-actors generate` on this Mac.
+- [x] Register `intake`, `clerk`, `building` and `zoning` once. Store the tokens. Servers call `workspace.reconnect` on boot, because a second `register` fails with `name_conflict`.
+- [x] Run a Relay hello-world with the real key. Confirm the base URL, whether an invited agent receives without `join`, and whether `metadata` survives delivery.
+- [x] Check: Run pre-review reaches `CORRECTIONS_REQUESTED` with all four rules on both screens. No manual step. **First full run by 14:00.** If it fails, take the PDF's cut and make Zoning a static NEEDS HUMAN VERIFICATION.
 
 ### Task 6. Correction loop and packet (14:00 to 14:40)
 
@@ -195,13 +195,13 @@ Each task ends in a check. The next task starts only after that check passes. Ta
 
 - [ ] Share `tokens.css` with Kris. One font pairing, one accent color, one card style.
 - [x] Animate the card flip and the stamp. Respect `prefers-reduced-motion`.
-- [ ] Check: `grep -ri "approved\|stampede" apps/web/src` finds no on-screen text. No raw JSON or logs show. The full demo runs three times in under three minutes.
+- [ ] Check: `grep -ri "approved" apps/web/src` finds no on-screen text. No raw JSON or logs show. The full demo runs three times in under three minutes.
 
 ### Task 8. Record and write up (15:20 to 15:40)
 
 - [ ] Record the backup video, 2 to 3 minutes, full loop.
 - [x] Replace the README. It still says Devpost, a Fire agent, and an `approved` status, so a judge reading the repo would see a different project.
-- [ ] Fill in the BuilderBase form as stamp.
+- [ ] Fill in the BuilderBase form as stampede.
 
 ### Task 9. Submit (15:40 to 15:55)
 

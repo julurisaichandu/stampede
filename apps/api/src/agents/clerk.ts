@@ -1,4 +1,4 @@
-// stamped — Clerk agent, the only status writer. Moves the permit over its signed socket, asks Building and Zoning
+// stampede — Clerk agent, the only status writer. Moves the permit over its signed socket, asks Building and Zoning
 // for a review, and decides once both report. Talks on Relay; every decision lands in the PermitActor.
 import { actors } from "../../generated/index.js"
 import { openStatusSocket } from "../clerk-socket.ts"
@@ -48,11 +48,12 @@ export async function startClerk(): Promise<void> {
         `Sent back to the homeowner: ${names} ${open.length === 1 ? "needs" : "need"} attention.`,
       )
     } else {
-      const planner = current.filter((f) => f.status !== "PASS").map((f) => f.ruleId)
-      await setStatus(permitId, "PRE_REVIEW_COMPLETE", planner.length ? `No open corrections; ${planner.join(", ")} carries into the packet` : "No open items")
+      const open = current.filter((f) => f.status !== "PASS").map((f) => f.ruleId)
+      const carried = open.length ? `${open.join(" and ")} ${open.length === 1 ? "carries" : "carry"} into the packet` : ""
+      await setStatus(permitId, "PRE_REVIEW_COMPLETE", carried ? `No open corrections; ${carried}` : "No open items")
       await clerk.send(
         { permitId, revision: state.revision, type: "REVIEW_COMPLETE", payload: { status: "PRE_REVIEW_COMPLETE" } },
-        `Pre-review complete.${planner.length ? ` ${planner.join(", ")} carries into the packet.` : ""}`,
+        `Pre-review complete.${carried ? ` ${carried}.` : ""}`,
       )
     }
   }

@@ -6,7 +6,7 @@ import { explainFindings, findingsTemplate } from "./explain.ts"
 import { readTurn, type IntakeTurn } from "./schema.ts"
 import { composeReply, nextQuestion, readUserTurn, toMessages, toTurn, type ReplyOutcome, type Turn } from "./turn.ts"
 
-const FORBIDDEN = /approv|passes|stampede/i
+const FORBIDDEN = /approv|passes/i
 const noSlot = { status: "not_mentioned" as const, value: null, confidence: 1 }
 const modelTurn = (over: Partial<IntakeTurn> = {}, deck: Partial<IntakeTurn["deck"]> = {}): IntakeTurn => ({
   intent: "provide_project_details",
@@ -306,7 +306,7 @@ const cases: [string, () => void | Promise<void>][] = [
     },
   ],
   [
-    "no reply built above carries a verdict or the old name",
+    "no reply built above carries a verdict",
     () => {
       assert.ok(replies.length > 15)
       for (const out of replies) assert.doesNotMatch(out, FORBIDDEN, out)
