@@ -1,5 +1,23 @@
-Type these into the customer chat, one at a time. Wait for each reply.
+There are two ways to run the demo. Use a new permit for each. Wait for each reply.
 What each step should show is in expected-output.md.
+
+
+WITH PLANS
+
+1. Open http://localhost:5173. Click Upload plans and choose sample-deck-plan.pdf from this folder. Click Start my pre-review.
+
+2. Paste this:
+
+yes, that's right
+
+3. Click Run pre-review. Wait for the chat to explain the railing.
+
+4. Click Upload plans in the chat. Choose sample-deck-plan-revised.pdf and click Send.
+
+5. Click Go to the packet.
+
+
+WITH TYPING
 
 1. Paste this:
 
@@ -16,5 +34,6 @@ attached, about 36 inches high, railing 36 inches.
 I'll make the railing 42 inches.
 
 5. Click Go to the packet.
+
 
 The officer side has no input. It only shows what the customer's chat causes.

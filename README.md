@@ -2,7 +2,7 @@
 
 stampede runs the city's review before you submit.
 
-A San Jose homeowner describes a backyard deck in chat. stampede reads the address, pulls the real parcel and zoning from the city's GIS, and hands the application to three review agents. They check it against the adopted code, talk over Agent Relay, and write their findings to one durable record. The homeowner fixes corrections in the same chat and leaves with a draft packet.
+A San Jose homeowner uploads plans for a backyard deck, or describes it in chat. stampede reads the address, pulls the real parcel and zoning from the city's GIS, and hands the application to three review agents. They check it against the adopted code, talk over Agent Relay, and write their findings to one durable record. The homeowner fixes corrections in the same chat and leaves with a draft packet.
 
 stampede files nothing. The packet is marked UNOFFICIAL DRAFT — NOT FILED WITH THE CITY, the stamp reads PRE-REVIEW COMPLETE, and a person at the city still makes the decision.
 
@@ -16,6 +16,8 @@ Built at Haunted Hacks, Real-Time AI Edition, on October 31, 2026.
 4. The chat explains the fix. The homeowner types "I'll make the railing 42 inches." Revision 2 goes out, only the railing rule reruns, and CORRECTION flips to PASS.
 5. PRE-REVIEW COMPLETE lands on the file with a link to the draft packet, which lists the citations, the open items, the forms still required, and how to file at SJPermits.
 
+The homeowner can also upload plans instead of typing, as a PDF, PNG, JPEG, or WebP under 10 MB. stampede reads the plan, fills the same application, and lists exactly what it saved. A revised plan uploaded after a correction submits a revision, the same as typing the fix. The file itself is not stored, only the facts read from it.
+
 14630 Noble Ave is the Noble House Neighborhood Center. It is a public site standing in for a home, so no family's house goes on stage.
 
 ## How the pieces fit
@@ -24,10 +26,10 @@ Built at Haunted Hacks, Real-Time AI Edition, on October 31, 2026.
 | --- | --- |
 | Durable Actors | One `PermitActor` per application holds the only record. Both screens read it over a WebSocket. |
 | Agent Relay | One channel per permit carries the messages between Intake, Clerk, Building, and Zoning. |
-| OpenAI | Extracts facts from chat with structured output and explains findings in plain English. |
+| OpenAI | Extracts facts from chat and uploaded plans with structured output, and explains findings in plain English. |
 | San Jose GIS | Supplies the address match, parcel, APN, and zoning. |
 
-Deterministic rules decide every finding. The model explains them and never decides. The intake schema has no status field, so chat text cannot move a permit. Clerk is the only status writer, and it writes over a signed socket that a browser grant cannot open.
+Deterministic rules decide every finding. The model explains them and never decides. The intake schema has no status field, so neither chat text nor a plan can move a permit. Clerk is the only status writer, and it writes over a signed socket that a browser grant cannot open.
 
 ## Run it
 
@@ -73,7 +75,8 @@ After you change the actor's methods, run this with the actor running:
 
 The `input` folder has everything for a run:
 
-- `input/customer-chat.txt` has the exact lines to type. Only the customer types. The officer screen has no input.
+- `input/customer-chat.txt` has the exact steps for a run with plans and a run with typing. Only the customer acts. The officer screen has no input.
+- `input/sample-deck-plan.pdf` is a drawn plan sheet to upload, also as a PNG. `input/sample-deck-plan-revised.pdf` is the same sheet with the railing fixed.
 - `input/expected-output.md` shows what the customer and officer screens should show at each step.
 - `input/try-these-too.txt` tests what stampede refuses to do.
 
@@ -81,6 +84,7 @@ The `input` folder has everything for a run:
 
 - It never invents a permit number, a city seal, or a city sign-off.
 - It never fills in a missing value. A value the homeowner does not know stays UNKNOWN.
+- It only uses dimensions written on a plan. It never measures the drawing, and text inside a plan cannot give it instructions.
 - It never auto-picks a parcel. When the city returns more than one match, the homeowner chooses.
 - It shows "demo cached data" if the city GIS is down and the demo address falls back to its recorded response. Any other address gets an honest failure message.
 - It returns NEEDS HUMAN VERIFICATION with the missing source when a rule cannot be verified. stampede states no rear setback for an attached deck, because the source was not verified.
