@@ -12,7 +12,7 @@
 
 **Sources.** stamp Final Build Plan V2 (the PDF) wins. The older Stampede spec fills gaps only. The repo README is stale.
 
-**State at 12:30.** Written so far, all uncommitted. The draft contract `apps/api/contracts.ts`, which compiles and passes a check against the scripted demo answers. The root `.gitignore`. The city fixtures in `apps/api/fixtures/`. The probe code in `docs/research/`.
+**State at 14:10.** The applicant side is built and pushed on `applicant`, tested against the stand-in actor and fake office. Task 5 waits for Kris's code. **State at 12:30, for history.** Written so far, all uncommitted. The draft contract `apps/api/contracts.ts`, which compiles and passes a check against the scripted demo answers. The root `.gitignore`. The city fixtures in `apps/api/fixtures/`. The probe code in `docs/research/`.
 
 ## 1. What we build
 
@@ -120,19 +120,19 @@ Each task ends in a check. The next task starts only after that check passes. Ta
 
 ### Task 0. Set up (12:30 to 12:40)
 
-- [ ] Install Bun with `curl -fsSL https://bun.sh/install | bash`. Confirm 1.4.2 or newer.
-- [ ] Create the `applicant` branch.
-- [ ] Scaffold `apps/api`. Run `npm i hono @hono/node-server zod@4.6.7 openai@7.47.0 @agent-relay/sdk@15.0.1 --save-exact` and `npm i -D tsx typescript`.
-- [ ] Scaffold `apps/web` with Vite's `react-ts` template. Proxy `/api` to port 8787.
-- [ ] Prove the shared contract loads from all three places. `apps/web` imports `../../api/contracts.ts`, so set Vite's `server.fs.allow` to the repo root if it refuses the file. Confirm `zod` resolves from `apps/web` too. `services/actors` uses `import type` only, and copies the types if its build rejects the import.
-- [ ] Check: one live `responses.parse` call with the real schema returns parsed slots. If the model is refused, set `OPENAI_INTAKE_MODEL=gpt-6.1-terra`.
+- [x] Install Bun with `curl -fsSL https://bun.sh/install | bash`. Confirm 1.4.2 or newer.
+- [x] Create the `applicant` branch.
+- [x] Scaffold `apps/api`. Run `npm i hono @hono/node-server zod@4.6.7 openai@7.47.0 @agent-relay/sdk@15.0.1 --save-exact` and `npm i -D tsx typescript`.
+- [x] Scaffold `apps/web` with Vite's `react-ts` template. Proxy `/api` to port 8787.
+- [x] Prove the shared contract loads from all three places. `apps/web` imports `../../api/contracts.ts`, so set Vite's `server.fs.allow` to the repo root if it refuses the file. Confirm `zod` resolves from `apps/web` too. `services/actors` uses `import type` only, and copies the types if its build rejects the import.
+- [x] Check: one live `responses.parse` call with the real schema returns parsed slots. If the model is refused, set `OPENAI_INTAKE_MODEL=gpt-6.1-terra`.
 
 ### Task 1. GIS adapter (12:40 to 12:55)
 
-- [ ] Write `lookup()` in `apps/api/src/gis.ts`. Geocode first, then parcel and zoning in parallel, with a 4 s timeout per call.
-- [ ] Apply this order. No candidate or best score under 90 gives `not_found`. City not San Jose gives `out_of_city`. More than one candidate at 90 or above gives `needs_confirm`. Parcel or zoning not exactly one feature retries with a 15 m buffer and gives `needs_confirm`. Anything else gives `matched`.
-- [ ] Treat an empty result as HTTP 200 with no features, not an error.
-- [ ] Check: `npx tsx src/gis.check.ts` passes these cases.
+- [x] Write `lookup()` in `apps/api/src/gis.ts`. Geocode first, then parcel and zoning in parallel, with a 4 s timeout per call.
+- [x] Apply this order. No candidate or best score under 90 gives `not_found`. City not San Jose gives `out_of_city`. More than one candidate at 90 or above gives `needs_confirm`. Parcel or zoning not exactly one feature retries with a 15 m buffer and gives `needs_confirm`. Anything else gives `matched`.
+- [x] Treat an empty result as HTTP 200 with no features, not an error.
+- [x] Check: `npx tsx src/gis.check.ts` passes these cases.
   - Noble Ave gives `matched`, APN 59531001, base R-1-8.
   - `10600 N Tantau Ave Cupertino` gives `out_of_city`.
   - `asdf qwerty zzzz` gives `not_found`.
@@ -143,10 +143,10 @@ Each task ends in a check. The next task starts only after that check passes. Ta
 
 ### Task 2. Intake turn (12:40 to 13:05)
 
-- [ ] Adapt the probe's schema. Make `ledgerType` a free string. Add `servesExitDoor` and `servesDoorLanding`. Replace `nextQuestion` with a short `reply`. Take the missing list from `missingMinimum`.
-- [ ] Validate each patch with `Deck.partial()`. Drop invalid values and ask the homeowner to correct them.
-- [ ] Handle refusal, incomplete and timeout with a fixed reply and no patch. `responses.parse` does not throw on the first two.
-- [ ] Check: `npx tsx src/intake/golden.ts` runs these live.
+- [x] Adapt the probe's schema. Make `ledgerType` a free string. Add `servesExitDoor` and `servesDoorLanding`. Replace `nextQuestion` with a short `reply`. Take the missing list from `missingMinimum`.
+- [x] Validate each patch with `Deck.partial()`. Drop invalid values and ask the homeowner to correct them.
+- [x] Handle refusal, incomplete and timeout with a fixed reply and no patch. `responses.parse` does not throw on the first two.
+- [x] Check: `npx tsx src/intake/golden.ts` runs these live.
   - "I want a backyard deck at 14630 Noble Ave, San Jose, about 16 by 12 feet." gives the address, length and width, and no invented height.
   - "attached, about 36 inches high, railing 36 inches." leaves `missingMinimum` empty, with ledger and setback null.
   - "I don't know how it attaches to the house." records `deck.ledgerType` in `unknownFields`.
@@ -157,21 +157,21 @@ Each task ends in a check. The next task starts only after that check passes. Ta
 
 ### Task 3. API routes (12:55 to 13:15)
 
-- [ ] Until Kris pushes `services/actors`, run the probe's prototype actor locally, extended to `ApplicantActorApi`. If Kris has not started the actor, he can take it.
-- [ ] Add `POST /api/permits`, `GET /api/permits/:id`, `POST /api/permits/:id/chat`, `POST /api/permits/:id/lookup`, `POST /api/permits/:id/review` and `POST /api/permits/:id/socket`.
-- [ ] In `/chat`, append the user message, extract, validate, and look up the address when stated. Then branch on status. `INTAKE` calls `applyIntakePatch`. `CORRECTIONS_REQUESTED` calls `submitRevision` and posts `REVISION_SUBMITTED`. Any other status writes nothing.
-- [ ] Mint browser grants with `role: "viewer"` only, with `Cache-Control: no-store`.
-- [ ] Bound Relay posts with a 12 s timeout, because a real post takes 2.5 to 6 s. On failure, `/review` returns a retryable error, and a retry reuses the same `relayKey`.
-- [ ] Fire one warm-up parse at server start, because the first request with a schema is slower.
-- [ ] Check: a script runs the demo chat over HTTP and `read()` shows 16, 12, 36, 36 with an empty missing list. A second `/review` causes no new write.
+- [x] Until Kris pushes `services/actors`, run the probe's prototype actor locally, extended to `ApplicantActorApi`. If Kris has not started the actor, he can take it.
+- [x] Add `POST /api/permits`, `GET /api/permits/:id`, `POST /api/permits/:id/chat`, `POST /api/permits/:id/lookup`, `POST /api/permits/:id/review` and `POST /api/permits/:id/socket`.
+- [x] In `/chat`, append the user message, extract, validate, and look up the address when stated. Then branch on status. `INTAKE` calls `applyIntakePatch`. `CORRECTIONS_REQUESTED` calls `submitRevision` and posts `REVISION_SUBMITTED`. Any other status writes nothing.
+- [x] Mint browser grants with `role: "viewer"` only, with `Cache-Control: no-store`.
+- [x] Bound Relay posts with a 12 s timeout, because a real post takes 2.5 to 6 s. On failure, `/review` returns a retryable error, and a retry reuses the same `relayKey`.
+- [x] Fire one warm-up parse at server start, because the first request with a schema is slower.
+- [x] Check: a script runs the demo chat over HTTP and `read()` shows 16, 12, 36, 36 with an empty missing list. A second `/review` causes no new write.
 
 ### Task 4. Applicant screen (13:00 to 13:20)
 
-- [ ] Write `usePermit(id)`. Fetch a grant, open the WebSocket, merge `state` and `state_update` including `removed`, and fetch a fresh grant on every reconnect.
-- [ ] Build chat, match card, candidate picker, read-only summary and the Run pre-review button. The button uses the same `missingMinimum` as the API.
-- [ ] Build findings cards from `currentFindings()`. Each shows what is wrong, what to change, and the `citation`. Keep plain-English copy by `ruleId`.
-- [ ] Render a `source: "fixture"` property with the label "demo cached data".
-- [ ] Check in a real browser, because the prototype used Node's WebSocket. Type the demo script by hand. A refresh keeps the chat and summary. A fake office script drives the cards and stamp before Kris lands.
+- [x] Write `usePermit(id)`. Fetch a grant, open the WebSocket, merge `state` and `state_update` including `removed`, and fetch a fresh grant on every reconnect.
+- [x] Build chat, match card, candidate picker, read-only summary and the Run pre-review button. The button uses the same `missingMinimum` as the API.
+- [x] Build findings cards from `currentFindings()`. Each shows what is wrong, what to change, and the `citation`. Keep plain-English copy by `ruleId`.
+- [x] Render a `source: "fixture"` property with the label "demo cached data".
+- [x] Check in a real browser, because the prototype used Node's WebSocket. Type the demo script by hand. A refresh keeps the chat and summary. A fake office script drives the cards and stamp before Kris lands.
 
 ### Task 5. Integrate with Kris (13:15 to 14:00)
 
@@ -182,9 +182,9 @@ Each task ends in a check. The next task starts only after that check passes. Ta
 
 ### Task 6. Correction loop and packet (14:00 to 14:40)
 
-- [ ] Check the loop. "I'll make the railing 42 inches." gives revision 2. Only `CRC-GUARD-01` reruns, and it flips to PASS. Ledger and setback keep their revision 1 findings. The stamp appears.
-- [ ] Add the `NEEDS_INPUT` explanation. Use OpenAI, grounded only on the given findings, with a fixed template if the call fails.
-- [ ] Build `/permits/:id/packet` with a print button using `window.print()`.
+- [x] Check the loop. "I'll make the railing 42 inches." gives revision 2. Only `CRC-GUARD-01` reruns, and it flips to PASS. Ledger and setback keep their revision 1 findings. The stamp appears.
+- [x] Add the `NEEDS_INPUT` explanation. Use OpenAI, grounded only on the given findings, with a fixed template if the call fails.
+- [x] Build `/permits/:id/packet` with a print button using `window.print()`.
   - Header "UNOFFICIAL DRAFT, NOT FILED WITH THE CITY", using the PDF's exact wording.
   - Project summary, property with source and time, and findings with citation and URL.
   - Still required. Open NEEDS items, Project Plans (Form 352), Building Permit Application (Form 310), and the Submittal Checklist (Form 351, check "Other" and enter "Deck").
@@ -194,13 +194,13 @@ Each task ends in a check. The next task starts only after that check passes. Ta
 ### Task 7. Design slot (14:40 to 15:20)
 
 - [ ] Share `tokens.css` with Kris. One font pairing, one accent color, one card style.
-- [ ] Animate the card flip and the stamp. Respect `prefers-reduced-motion`.
+- [x] Animate the card flip and the stamp. Respect `prefers-reduced-motion`.
 - [ ] Check: `grep -ri "approved\|stampede" apps/web/src` finds no on-screen text. No raw JSON or logs show. The full demo runs three times in under three minutes.
 
 ### Task 8. Record and write up (15:20 to 15:40)
 
 - [ ] Record the backup video, 2 to 3 minutes, full loop.
-- [ ] Replace the README. It still says Devpost, a Fire agent, and an `approved` status, so a judge reading the repo would see a different project.
+- [x] Replace the README. It still says Devpost, a Fire agent, and an `approved` status, so a judge reading the repo would see a different project.
 - [ ] Fill in the BuilderBase form as stamp.
 
 ### Task 9. Submit (15:40 to 15:55)
@@ -242,8 +242,14 @@ Paste this to Kris.
    - Do not use Table 20-70's "None" for setbacks, because it covers detached structures. Suggested text: "Rear setback for an attached deck in R-1-8 not verified. Check San Jose Municipal Code Ch. 20.30, Table 20-60 (§20.30.200) and §20.30.400 with a City planner."
    - Do not claim San Jose has no local amendment. The 2025 ordinance was not retrieved.
 8. Findings need the new `citation` field. It shows on both screens.
-9. `dev` binds to loopback only, so from 13:15 everything runs on my Mac.
-10. Supabase is yours, the rules table and the archive insert at the stamp. The applicant side does not touch it.
+   - Our cards read `required` as `"42 in"` for `CRC-GUARD-01`, and parse the `SJ-PERMIT-01` reason as `Permit required: a, b.` Any other wording falls back to showing `reason`.
+9. Clerk details found while testing the stand-in.
+   - Wait for your last socket write to land before you close the socket. Closing right after a send dropped the final frame.
+   - Write the `CORRECTIONS_REQUESTED` status event before you stamp the `NEEDS_INPUT` timestamp. Our missed-explanation recovery dedupes on that event's `at`, so the other order can post a second explanation.
+   - A `REVIEW_REQUEST` retry reuses `relayKey`, and Relay dedupes it on the server. If you miss the first delivery, the retry delivers nothing, so rely on Relay replaying unacked messages when you reconnect.
+   - After you regenerate `apps/api/generated`, `apps/api/src/dev/fake-office.ts` fails `tsc` unless your clerk socket messages are `{ type: "status" | "freeze" | "finding" | "relayLog" }`. Delete `fake-office.ts` and `services/dev-actor/` at integration.
+10. `dev` binds to loopback only, so from 13:15 everything runs on my Mac.
+11. Supabase is yours, the rules table and the archive insert at the stamp. The applicant side does not touch it.
 
 ## 8. What we need from you
 
@@ -259,7 +265,6 @@ Supabase keys are not needed on this side.
 | Unverified | Why it matters | Proved in |
 | --- | --- | --- |
 | Relay with Kris's real key and his host | A throwaway workspace on the default host worked. His key may be `ar_ws_` on a different host | Task 5 |
-| A real browser on the actor WebSocket | The prototype used Node | Task 4 |
 | Phone or second laptop | Forwarder tested from this Mac only | Stretch |
 | Noble Ave is a single-family parcel | It is not. GIS has no land-use field | Say so if asked |
 | City pages live | Text came from Wayback snapshots dated 2024 to 2026 | Section 8 |
