@@ -13,6 +13,51 @@ stampede files nothing and approves nothing. A person at the city still makes th
 
 Built at Haunted Hacks, Real-Time AI Edition, on October 31, 2026.
 
+## The services we used
+
+stampede runs on products from four Haunted Hacks sponsors.
+
+| | Sponsor | What it does in stampede |
+| --- | --- | --- |
+| <a href="https://openai.com"><img src="docs/logos/openai.png" alt="OpenAI logo" width="48"></a> | **[OpenAI](https://openai.com)** | Reads chat messages and uploaded plans, and explains the results in plain English. |
+| <a href="https://www.useterse.ai"><img src="docs/logos/terse.png" alt="Terse logo" width="48"></a> | **[Terse](https://www.useterse.ai)** | Durable Actors holds one record for each permit. Both screens read it live, and it survives restarts. |
+| <a href="https://agentrelay.com"><img src="docs/logos/agent-relay.png" alt="Agent Relay logo" width="48"></a> | **[Agent Relay](https://agentrelay.com)** | Carries the messages between the Intake, Clerk, Building, and Zoning agents, with one channel for each permit. |
+| <a href="https://superserve.ai"><img src="docs/logos/superserve.png" alt="Superserve logo" width="48"></a> | **[Superserve](https://superserve.ai)** | Hosts the live demo in a cloud sandbox, so the links at the top of this page work without anyone's laptop. |
+
+The address, lot, and zoning data comes from the City of San Jose's public GIS services. The city is a data source, not a sponsor.
+
+In this map, each branch is a service we used, or our own code, and the job it does. [Services in detail](#services-in-detail) has the technical version.
+
+```mermaid
+mindmap
+  root((stampede))
+    OpenAI, the reader
+      Reads chat messages
+      Reads uploaded plans
+      Explains results in plain English
+    San Jose GIS, the city map
+      Confirms the address
+      Finds the lot
+      Finds the zoning
+    Superserve, the server
+      Hosts the live demo
+    Agent Relay, the group chat
+      One channel per permit
+      Four agents talk here
+    Terse Durable Actors, the file cabinet
+      One record per permit
+      Survives restarts
+      Only Clerk changes the status
+    Our rules, the rulebook
+      Four checks in plain code
+      No AI decides a result
+      Every result cites its source
+    Our app, built with React and Hono
+      Homeowner chat and file
+      Officer screen
+      Draft packet
+```
+
 ## How to use it
 
 You can type your deck or upload plans. Use a new permit for each run. The chat wording changes between runs, but the findings, statuses, and numbers do not.
@@ -80,51 +125,6 @@ Here is an example. A deck sits 36 inches above the ground with a 36-inch railin
 AI reads what you type and upload, and it explains the results in plain English. It does not decide anything. Fixed rules written in code decide every result.
 
 A second screen, the officer screen, shows the same file while the agents work. It shows the checklist, the agents' messages to each other, and a log of every step. Nobody types there.
-
-## The services we used
-
-stampede runs on products from four Haunted Hacks sponsors.
-
-| | Sponsor | What it does in stampede |
-| --- | --- | --- |
-| <a href="https://openai.com"><img src="docs/logos/openai.png" alt="OpenAI logo" width="48"></a> | **[OpenAI](https://openai.com)** | Reads chat messages and uploaded plans, and explains the results in plain English. |
-| <a href="https://www.useterse.ai"><img src="docs/logos/terse.png" alt="Terse logo" width="48"></a> | **[Terse](https://www.useterse.ai)** | Durable Actors holds one record for each permit. Both screens read it live, and it survives restarts. |
-| <a href="https://agentrelay.com"><img src="docs/logos/agent-relay.png" alt="Agent Relay logo" width="48"></a> | **[Agent Relay](https://agentrelay.com)** | Carries the messages between the Intake, Clerk, Building, and Zoning agents, with one channel for each permit. |
-| <a href="https://superserve.ai"><img src="docs/logos/superserve.png" alt="Superserve logo" width="48"></a> | **[Superserve](https://superserve.ai)** | Hosts the live demo in a cloud sandbox, so the links at the top of this page work without anyone's laptop. |
-
-The address, lot, and zoning data comes from the City of San Jose's public GIS services. The city is a data source, not a sponsor.
-
-In this map, each branch is a service we used, or our own code, and the job it does. [Services in detail](#services-in-detail) has the technical version.
-
-```mermaid
-mindmap
-  root((stampede))
-    OpenAI, the reader
-      Reads chat messages
-      Reads uploaded plans
-      Explains results in plain English
-    San Jose GIS, the city map
-      Confirms the address
-      Finds the lot
-      Finds the zoning
-    Superserve, the server
-      Hosts the live demo
-    Agent Relay, the group chat
-      One channel per permit
-      Four agents talk here
-    Terse Durable Actors, the file cabinet
-      One record per permit
-      Survives restarts
-      Only Clerk changes the status
-    Our rules, the rulebook
-      Four checks in plain code
-      No AI decides a result
-      Every result cites its source
-    Our app, built with React and Hono
-      Homeowner chat and file
-      Officer screen
-      Draft packet
-```
 
 ## How the parts connect
 
