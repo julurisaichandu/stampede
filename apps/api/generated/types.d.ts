@@ -82,6 +82,184 @@ declare const Intake: z.ZodObject<
     },
     z.core.$strip
 >
+declare const PermitApplication: z.ZodObject<
+    {
+        id: z.ZodString
+        status: z.ZodEnum<{
+            INTAKE: "INTAKE"
+            READY_FOR_REVIEW: "READY_FOR_REVIEW"
+            IN_REVIEW: "IN_REVIEW"
+            CORRECTIONS_REQUESTED: "CORRECTIONS_REQUESTED"
+            REVISED: "REVISED"
+            PRE_REVIEW_COMPLETE: "PRE_REVIEW_COMPLETE"
+        }>
+        revision: z.ZodNumber
+        property: z.ZodNullable<
+            z.ZodObject<
+                {
+                    address: z.ZodString
+                    lat: z.ZodNumber
+                    lng: z.ZodNumber
+                    apn: z.ZodString
+                    parcelId: z.ZodString
+                    zoning: z.ZodNullable<z.ZodString>
+                    zoningBase: z.ZodNullable<z.ZodString>
+                    zoningOverlay: z.ZodNullable<z.ZodString>
+                    rezoningFile: z.ZodNullable<z.ZodString>
+                    lookupConfidence: z.ZodNumber
+                    source: z.ZodEnum<{
+                        live: "live"
+                        fixture: "fixture"
+                    }>
+                    fetchedAt: z.ZodString
+                },
+                z.core.$strip
+            >
+        >
+        deck: z.ZodObject<
+            {
+                lengthFt: z.ZodNullable<z.ZodNumber>
+                widthFt: z.ZodNullable<z.ZodNumber>
+                maxHeightIn: z.ZodNullable<z.ZodNumber>
+                attached: z.ZodNullable<z.ZodBoolean>
+                ledgerType: z.ZodNullable<z.ZodString>
+                rearSetbackFt: z.ZodNullable<z.ZodNumber>
+                guardHeightIn: z.ZodNullable<z.ZodNumber>
+                servesExitDoor: z.ZodNullable<z.ZodBoolean>
+                servesDoorLanding: z.ZodNullable<z.ZodBoolean>
+            },
+            z.core.$strip
+        >
+        intake: z.ZodObject<
+            {
+                complete: z.ZodBoolean
+                missingFields: z.ZodArray<z.ZodString>
+                unknownFields: z.ZodArray<z.ZodString>
+                confirmedAt: z.ZodNullable<z.ZodString>
+            },
+            z.core.$strip
+        >
+        chat: z.ZodArray<
+            z.ZodObject<
+                {
+                    role: z.ZodEnum<{
+                        user: "user"
+                        assistant: "assistant"
+                    }>
+                    content: z.ZodString
+                    at: z.ZodString
+                },
+                z.core.$strip
+            >
+        >
+        revisions: z.ZodArray<
+            z.ZodObject<
+                {
+                    revision: z.ZodNumber
+                    deck: z.ZodObject<
+                        {
+                            lengthFt: z.ZodNullable<z.ZodNumber>
+                            widthFt: z.ZodNullable<z.ZodNumber>
+                            maxHeightIn: z.ZodNullable<z.ZodNumber>
+                            attached: z.ZodNullable<z.ZodBoolean>
+                            ledgerType: z.ZodNullable<z.ZodString>
+                            rearSetbackFt: z.ZodNullable<z.ZodNumber>
+                            guardHeightIn: z.ZodNullable<z.ZodNumber>
+                            servesExitDoor: z.ZodNullable<z.ZodBoolean>
+                            servesDoorLanding: z.ZodNullable<z.ZodBoolean>
+                        },
+                        z.core.$strip
+                    >
+                    frozenAt: z.ZodString
+                },
+                z.core.$strip
+            >
+        >
+        findings: z.ZodArray<
+            z.ZodObject<
+                {
+                    findingId: z.ZodString
+                    ruleId: z.ZodString
+                    reviewer: z.ZodEnum<{
+                        zoning: "zoning"
+                        building: "building"
+                    }>
+                    revision: z.ZodNumber
+                    status: z.ZodEnum<{
+                        PASS: "PASS"
+                        CORRECTION: "CORRECTION"
+                        NEEDS_INFORMATION: "NEEDS_INFORMATION"
+                        NEEDS_HUMAN_VERIFICATION: "NEEDS_HUMAN_VERIFICATION"
+                    }>
+                    field: z.ZodString
+                    observed: z.ZodNullable<z.ZodUnion<readonly [z.ZodNumber, z.ZodString, z.ZodBoolean]>>
+                    required: z.ZodNullable<z.ZodString>
+                    reason: z.ZodString
+                    citation: z.ZodString
+                    sourceUrl: z.ZodString
+                    evidence: z.ZodArray<z.ZodString>
+                    humanReviewNeeded: z.ZodBoolean
+                },
+                z.core.$strip
+            >
+        >
+        events: z.ZodArray<
+            z.ZodObject<
+                {
+                    at: z.ZodString
+                    who: z.ZodString
+                    why: z.ZodString
+                    from: z.ZodNullable<
+                        z.ZodEnum<{
+                            INTAKE: "INTAKE"
+                            READY_FOR_REVIEW: "READY_FOR_REVIEW"
+                            IN_REVIEW: "IN_REVIEW"
+                            CORRECTIONS_REQUESTED: "CORRECTIONS_REQUESTED"
+                            REVISED: "REVISED"
+                            PRE_REVIEW_COMPLETE: "PRE_REVIEW_COMPLETE"
+                        }>
+                    >
+                    to: z.ZodNullable<
+                        z.ZodEnum<{
+                            INTAKE: "INTAKE"
+                            READY_FOR_REVIEW: "READY_FOR_REVIEW"
+                            IN_REVIEW: "IN_REVIEW"
+                            CORRECTIONS_REQUESTED: "CORRECTIONS_REQUESTED"
+                            REVISED: "REVISED"
+                            PRE_REVIEW_COMPLETE: "PRE_REVIEW_COMPLETE"
+                        }>
+                    >
+                },
+                z.core.$strip
+            >
+        >
+        relayLog: z.ZodArray<
+            z.ZodObject<
+                {
+                    at: z.ZodString
+                    sender: z.ZodEnum<{
+                        zoning: "zoning"
+                        building: "building"
+                        intake: "intake"
+                        clerk: "clerk"
+                    }>
+                    type: z.ZodEnum<{
+                        REVIEW_REQUEST: "REVIEW_REQUEST"
+                        FINDING: "FINDING"
+                        NEEDS_INPUT: "NEEDS_INPUT"
+                        REVISION_SUBMITTED: "REVISION_SUBMITTED"
+                        REVIEW_COMPLETE: "REVIEW_COMPLETE"
+                        PACKET_READY: "PACKET_READY"
+                    }>
+                    revision: z.ZodNumber
+                    text: z.ZodString
+                },
+                z.core.$strip
+            >
+        >
+    },
+    z.core.$strip
+>
 declare const PermitEvent: z.ZodObject<
     {
         at: z.ZodString
@@ -161,9 +339,9 @@ declare const RelayLogEntry: z.ZodObject<
     z.core.$strip
 >
 export interface ActorTypes {
-    PermitActor: $PermitActorContract
+    Permit: $PermitContract
 }
-interface $PermitActorContract {
+interface $PermitContract {
     Metadata: Metadata
     Incoming: Incoming
     Outgoing: Outgoing
@@ -180,124 +358,23 @@ interface $PermitActorContract {
         relayLog: RelayLogEntry[]
     }
     Methods: {
+        /** Building and Zoning record findings for the revision under review. A rerun of a rule replaces it in place. */
+        addFinding(f: Finding): Promise<void>
         appendChat(message: ChatMessage): Promise<void>
         applyIntakePatch(input: {
             deck: Partial<Deck>
             missingFields: string[]
             unknownFields: string[]
         }): Promise<void>
+        /** A receiver claims a Relay message before acting on it. True only the first time for that receiver. */
+        claim(receiver: RelayLogEntry["sender"], key: string): Promise<boolean>
+        /** Locks the draft. Idempotent. */
         confirmIntake(at: string): Promise<void>
-        read(): Promise<{
-            status:
-                | "INTAKE"
-                | "READY_FOR_REVIEW"
-                | "IN_REVIEW"
-                | "CORRECTIONS_REQUESTED"
-                | "REVISED"
-                | "PRE_REVIEW_COMPLETE"
-            revision: number
-            property: {
-                address: string
-                lat: number
-                lng: number
-                apn: string
-                parcelId: string
-                zoning: string | null
-                zoningBase: string | null
-                zoningOverlay: string | null
-                rezoningFile: string | null
-                lookupConfidence: number
-                source: "live" | "fixture"
-                fetchedAt: string
-            } | null
-            deck: {
-                lengthFt: number | null
-                widthFt: number | null
-                maxHeightIn: number | null
-                attached: boolean | null
-                ledgerType: string | null
-                rearSetbackFt: number | null
-                guardHeightIn: number | null
-                servesExitDoor: boolean | null
-                servesDoorLanding: boolean | null
-            }
-            intake: {
-                complete: boolean
-                missingFields: string[]
-                unknownFields: string[]
-                confirmedAt: string | null
-            }
-            chat: {
-                role: "user" | "assistant"
-                content: string
-                at: string
-            }[]
-            revisions: {
-                revision: number
-                deck: {
-                    lengthFt: number | null
-                    widthFt: number | null
-                    maxHeightIn: number | null
-                    attached: boolean | null
-                    ledgerType: string | null
-                    rearSetbackFt: number | null
-                    guardHeightIn: number | null
-                    servesExitDoor: boolean | null
-                    servesDoorLanding: boolean | null
-                }
-                frozenAt: string
-            }[]
-            findings: {
-                findingId: string
-                ruleId: string
-                reviewer: "zoning" | "building"
-                revision: number
-                status: "PASS" | "CORRECTION" | "NEEDS_INFORMATION" | "NEEDS_HUMAN_VERIFICATION"
-                field: string
-                observed: string | number | boolean | null
-                required: string | null
-                reason: string
-                citation: string
-                sourceUrl: string
-                evidence: string[]
-                humanReviewNeeded: boolean
-            }[]
-            events: {
-                at: string
-                who: string
-                why: string
-                from:
-                    | "INTAKE"
-                    | "READY_FOR_REVIEW"
-                    | "IN_REVIEW"
-                    | "CORRECTIONS_REQUESTED"
-                    | "REVISED"
-                    | "PRE_REVIEW_COMPLETE"
-                    | null
-                to:
-                    | "INTAKE"
-                    | "READY_FOR_REVIEW"
-                    | "IN_REVIEW"
-                    | "CORRECTIONS_REQUESTED"
-                    | "REVISED"
-                    | "PRE_REVIEW_COMPLETE"
-                    | null
-            }[]
-            relayLog: {
-                at: string
-                sender: "zoning" | "building" | "intake" | "clerk"
-                type:
-                    | "REVIEW_REQUEST"
-                    | "FINDING"
-                    | "NEEDS_INPUT"
-                    | "REVISION_SUBMITTED"
-                    | "REVIEW_COMPLETE"
-                    | "PACKET_READY"
-                revision: number
-                text: string
-            }[]
-        }>
+        /** One human sentence per Relay message, logged once per relayKey however often it is delivered. */
+        logRelay(key: string, entry: RelayLogEntry): Promise<boolean>
+        read(): Promise<Omit<PermitApplication, "id">>
         setProperty(property: Property): Promise<void>
+        /** Opens the next revision. One submit per round: the Clerk must freeze it before another is accepted. */
         submitRevision(input: { deck: Partial<Deck>; changedFields: string[] }): Promise<number>
     }
 }
@@ -305,36 +382,32 @@ type ChatMessage = z.infer<typeof ChatMessage>
 type Deck = z.infer<typeof Deck>
 type Finding = z.infer<typeof Finding>
 type FrozenRevision = z.infer<typeof FrozenRevision>
-type Incoming =
-    | {
-          type: "status"
-          to: PermitStatus
-          why: string
-          at: string
-      }
-    | {
-          type: "freeze"
-          at: string
-      }
-    | {
-          type: "finding"
-          finding: Finding
-      }
-    | {
-          type: "relayLog"
-          entry: RelayLogEntry
-      }
+type Incoming = {
+    type: "setStatus"
+    to: PermitStatus
+    why: string
+    requestId: string
+}
 type Intake = z.infer<typeof Intake>
 type Metadata = {
-    role: "viewer" | "clerk"
+    role: Role
 }
-type Outgoing = {
-    type: "denied"
-    reason: string
-}
+type Outgoing =
+    | {
+          type: "ack"
+          requestId: string
+          status: PermitStatus
+      }
+    | {
+          type: "denied"
+          requestId: string
+          reason: string
+      }
+type PermitApplication = z.infer<typeof PermitApplication>
 type PermitEvent = z.infer<typeof PermitEvent>
 type PermitStatus = z.infer<typeof PermitStatus>
 type Property = z.infer<typeof Property>
 type RelayLogEntry = z.infer<typeof RelayLogEntry>
+type Role = "applicant" | "clerk" | "building" | "zoning" | "viewer"
 
 export {}

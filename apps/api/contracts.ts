@@ -1,9 +1,9 @@
 // Shared contract between the applicant side (Saichandu) and the office side (Kris).
-// DRAFT until Kris agrees. After that, neither side changes it without telling the other.
+// Agreed 2026-10-31 13:00 with the office-side changes marked "Office side:". Neither side changes it without telling the other.
 import { z } from "zod"
 
-// PRE_REVIEW_COMPLETE is inferred: the build plan's status line is clipped at "PRE_RE".
-// Clerk moves here when currentFindings() holds no CORRECTION.
+// PRE_REVIEW_COMPLETE confirmed (the build plan names it in full).
+// Clerk moves here when currentFindings() holds no CORRECTION (blocksStamp).
 // Open NEEDS_* findings do not block the stamp. They carry into the packet as still required.
 export const PermitStatus = z.enum([
   "INTAKE",
@@ -14,6 +14,16 @@ export const PermitStatus = z.enum([
   "PRE_REVIEW_COMPLETE",
 ])
 export type PermitStatus = z.infer<typeof PermitStatus>
+
+// Office side: the only moves the Clerk may make. The actor rejects anything else.
+export const ALLOWED_TRANSITIONS: Record<PermitStatus, PermitStatus[]> = {
+  INTAKE: ["READY_FOR_REVIEW"],
+  READY_FOR_REVIEW: ["IN_REVIEW"],
+  IN_REVIEW: ["CORRECTIONS_REQUESTED", "PRE_REVIEW_COMPLETE"],
+  CORRECTIONS_REQUESTED: ["REVISED"],
+  REVISED: ["IN_REVIEW"],
+  PRE_REVIEW_COMPLETE: [],
+}
 
 export const Property = z.object({
   address: z.string(),
@@ -204,6 +214,9 @@ export function currentFindings(findings: Finding[]): Finding[] {
   return [...latest.values()]
 }
 
+// Office side: findings that keep a permit out of PRE_REVIEW_COMPLETE. The actor enforces this too.
+export const blocksStamp = (f: Finding) => f.status === "CORRECTION"
+
 // Payload by type:
 //   REVIEW_REQUEST      intake to clerk   {}
 //   REVISION_SUBMITTED  intake to clerk   { changedFields: string[] }
@@ -222,5 +235,7 @@ export const RelayEnvelope = z.object({
 export type RelayEnvelope = z.infer<typeof RelayEnvelope>
 
 export const permitChannel = (permitId: string) => `permit-${permitId}`
-export const relayKey = (e: Pick<RelayEnvelope, "permitId" | "revision" | "type" | "findingId">) =>
-  `${e.permitId}:${e.revision}:${e.type}:${e.findingId ?? "-"}`
+// Office side: sender is part of the key. Building and Zoning both send REVIEW_COMPLETE for the same revision,
+// and without it the second one is dropped as a duplicate.
+export const relayKey = (e: Pick<RelayEnvelope, "permitId" | "revision" | "sender" | "type" | "findingId">) =>
+  `${e.permitId}:${e.revision}:${e.sender}:${e.type}:${e.findingId ?? "-"}`

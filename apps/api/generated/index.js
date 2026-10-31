@@ -14,18 +14,21 @@ export {
 /**
  * Call actor methods from your backend.
  * @example
- * const actor = actors.PermitActor.get("actor-id")
+ * const actor = actors.Permit.get("actor-id")
  */
 export const actors = {
-    ["PermitActor"]: {
+    ["Permit"]: {
         get(actorId, transport) {
             return $createActorStub(
-                "PermitActor",
+                "Permit",
                 actorId,
                 [
+                    { name: "addFinding", result: "void" },
                     { name: "appendChat", result: "void" },
                     { name: "applyIntakePatch", result: "void" },
+                    { name: "claim", result: "value" },
                     { name: "confirmIntake", result: "void" },
+                    { name: "logRelay", result: "value" },
                     { name: "read", result: "value" },
                     { name: "setProperty", result: "void" },
                     { name: "submitRevision", result: "value" }
@@ -36,21 +39,21 @@ export const actors = {
         /**
          * Allow a frontend connection after your backend checks the user's access.
          * @example
-         * const grant = await actors.PermitActor.prepareWebsocket({ actorId: "actor-id", metadata })
+         * const grant = await actors.Permit.prepareWebsocket({ actorId: "actor-id", metadata })
          */
         prepareWebsocket(authorization, options = {}, dependencies = {}) {
-            return new ActorProxy(options, dependencies).handle({ ...authorization, actorName: "PermitActor" })
+            return new ActorProxy(options, dependencies).handle({ ...authorization, actorName: "Permit" })
         }
     }
 }
 /**
  * Allow a frontend connection after your backend checks the user's access.
  * @example
- * const grant = await ActorProxy.handle({ actorName: "PermitActor", actorId: "actor-id", metadata })
+ * const grant = await ActorProxy.handle({ actorName: "Permit", actorId: "actor-id", metadata })
  */
 export class ActorProxy extends $SocketProxy {
     constructor(options = {}, dependencies = {}) {
-        super({ ["PermitActor"]: {} }, options, dependencies)
+        super({ ["Permit"]: {} }, options, dependencies)
     }
     handle(authorization) {
         return super.handle(authorization)

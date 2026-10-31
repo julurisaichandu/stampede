@@ -1,4 +1,4 @@
-// Needs services/dev-actor running and `npm run demo` running. Then: npm run check:demo
+// With scripts/dev.sh running: npm run check:demo
 import assert from "node:assert/strict"
 import { randomUUID } from "node:crypto"
 import { setTimeout as sleep } from "node:timers/promises"
@@ -115,7 +115,7 @@ await new Promise((resolve, reject) => {
   viewer.addEventListener("open", resolve, { once: true })
   viewer.addEventListener("error", reject, { once: true })
 })
-viewer.send(JSON.stringify({ type: "status", to: "PRE_REVIEW_COMPLETE", why: "viewer try", at: new Date().toISOString() }))
+viewer.send(JSON.stringify({ type: "setStatus", to: "PRE_REVIEW_COMPLETE", why: "viewer try", requestId: "viewer-try" }))
 await until("denied frame", async () => frames.some((f) => f.type === "denied"))
 permit = await read(id)
 assert.equal(permit.status, "INTAKE")

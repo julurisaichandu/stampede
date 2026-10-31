@@ -82,8 +82,9 @@ const changedPaths = (changes: [string, unknown][]) => changes.map(([key]) => `d
 
 function sendRevision(permitId: string, revision: number, changedFields: string[]) {
   const envelope = { permitId, revision, type: "REVISION_SUBMITTED", payload: { changedFields } } as const
+  const line = `Intake sent revision ${revision} to Clerk.`
   void (async () => {
-    if ((await post(envelope)) || (await post(envelope))) return
+    if ((await post(envelope, line)) || (await post(envelope, line))) return
     await permitActor(permitId).appendChat(assistant(REVIEWERS_UNREACHABLE))
   })().catch((err) => console.warn("[api] revision send failed", err))
 }
@@ -270,7 +271,7 @@ app.post("/api/permits/:id/review", async (c) => {
   // Outside serial: Relay takes seconds here, and chat should keep answering while it does.
   try {
     await openPermitChannel(id)
-    if (await post({ permitId: id, revision: permit.revision, type: "REVIEW_REQUEST", payload: {} })) {
+    if (await post({ permitId: id, revision: permit.revision, type: "REVIEW_REQUEST", payload: {} }, "Intake sent the file to Clerk.")) {
       return c.json<ReviewOk>({ status: (await permitActor(id).read()).status })
     }
   } catch (err) {
@@ -285,10 +286,11 @@ app.post("/api/permits/:id/socket", async (c) => {
   await load(id)
   // Not awaited: an explanation is a model call, and the page needs its socket now.
   serial(id, () => explainMissed(id)).catch((err) => console.warn("[api] missed explanation failed", err))
-  const { websocketUrl } = await actors.PermitActor.prepareWebsocket({ actorId: id, metadata: { role: "viewer" } })
+  const { websocketUrl } = await actors.Permit.prepareWebsocket({ actorId: id, metadata: { role: "viewer" } })
   return c.json<SocketGrant>({ websocketUrl })
 })
 
+if (relayMode() === "local") await import("./agents/index.ts")
 onNeedsInput((e) => serial(e.permitId, () => explainCorrections(e)))
 
 serve({ fetch: app.fetch, port: PORT, hostname: HOST }, () => console.log(`[api] listening on ${PORT}, relay mode ${relayMode()}`))

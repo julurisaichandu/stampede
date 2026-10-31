@@ -12,7 +12,7 @@
 
 **Sources.** stamp Final Build Plan V2 (the PDF) wins. The older Stampede spec fills gaps only. The repo README is stale.
 
-**State at 14:10.** The applicant side is built and pushed on `applicant`, tested against the stand-in actor and fake office. Task 5 waits for Kris's code. **State at 12:30, for history.** Written so far, all uncommitted. The draft contract `apps/api/contracts.ts`, which compiles and passes a check against the scripted demo answers. The root `.gitignore`. The city fixtures in `apps/api/fixtures/`. The probe code in `docs/research/`.
+**State at 14:21.** Kris's office side is merged into this repo. The real actor and agents replace the stand-ins. The stamp follows this plan, so only a CORRECTION blocks it. **State at 14:10.** The applicant side is built and pushed on `applicant`, tested against the stand-in actor and fake office. Task 5 waits for Kris's code. **State at 12:30, for history.** Written so far, all uncommitted. The draft contract `apps/api/contracts.ts`, which compiles and passes a check against the scripted demo answers. The root `.gitignore`. The city fixtures in `apps/api/fixtures/`. The probe code in `docs/research/`.
 
 ## 1. What we build
 

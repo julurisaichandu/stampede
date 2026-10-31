@@ -4,3 +4,5 @@ node_modules
 dist
 .durable-actors
 .dev-logs
+!.env.example
+.accept-id

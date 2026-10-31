@@ -18,15 +18,13 @@ export const STATUS_PILL: Record<FindingStatus, { label: string; tone: string }>
 // The office's observed and required are free-form ("42 in", 42, null), so anything unreadable is NaN.
 const measure = (value: Finding['observed']) => parseFloat(String(value))
 
-const lowerFirst = (text: string) => text.charAt(0).toLowerCase() + text.slice(1)
-
 export const RULES: Record<string, Rule> = {
   'SJ-PERMIT-01': {
     label: 'Building permit',
     reviewer: 'building',
     byStatus: {
       PASS: ({ reason }) => {
-        const [, triggers] = reason.match(/^Permit required:\s*(.+?)\.?$/) ?? []
+        const [, triggers] = reason.match(/^A building permit is required:\s*(.+?)\.?$/) ?? []
         if (!triggers) return { title: 'Building permit', note: reason }
         return {
           title: 'Your deck needs a building permit',
@@ -75,10 +73,10 @@ export const RULES: Record<string, Rule> = {
     label: 'Connection details',
     reviewer: 'building',
     byStatus: {
-      NEEDS_INFORMATION: ({ required }) => ({
+      NEEDS_INFORMATION: () => ({
         title: 'Show how the deck connects',
         wrong: 'We do not have the details of how the deck connects yet.',
-        change: required ? `Your plans need to show ${lowerFirst(required)}.` : undefined,
+        change: 'Your plans need to show the ledger connection.',
       }),
       PASS: () => ({
         title: 'Connection details are noted',

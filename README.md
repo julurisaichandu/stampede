@@ -26,7 +26,6 @@ Built at Haunted Hacks, Real-Time AI Edition, on October 31, 2026.
 | Agent Relay | One channel per permit carries the messages between Intake, Clerk, Building, and Zoning. |
 | OpenAI | Extracts facts from chat with structured output and explains findings in plain English. |
 | San Jose GIS | Supplies the address match, parcel, APN, and zoning. |
-| Supabase | Stores the rules table and the archive of finished permits. |
 
 Deterministic rules decide every finding. The model explains them and never decides. The intake schema has no status field, so chat text cannot move a permit. Clerk is the only status writer, and it writes over a signed socket that a browser grant cannot open.
 
@@ -38,31 +37,35 @@ You need Node 24 and Bun 1.4.2 or newer. Install the dependencies:
 curl -fsSL https://bun.sh/install | bash
 (cd apps/api && npm install)
 (cd apps/web && npm install)
-(cd services/dev-actor && bun install)
+(cd services/actors && bun install)
 ```
 
-Create `apps/api/.env`, and put the same `DURABLE_ACTORS_SECRET` in `services/dev-actor/.env`:
+Create `apps/api/.env`, and put the same `DURABLE_ACTORS_SECRET` in `services/actors/.env`:
 
 ```sh
 OPENAI_API_KEY=...
 DURABLE_ACTORS_SECRET=...
 ```
 
-Start everything, then open http://localhost:5173:
+Register the Relay agents once. This creates a hosted workspace and saves its keys to `apps/api/.env`:
 
 ```sh
-scripts/dev.sh fake
+(cd apps/api && npm run relay:register)
 ```
 
-`fake` runs a test stand-in for the Clerk, Building, and Zoning agents, so you can run the whole loop with no Relay keys. `services/dev-actor` is a stand-in for the real actor in the same way.
-
-To use real agents, add `RELAY_WORKSPACE_KEY`, `RELAY_INTAKE_TOKEN`, and `RELAY_BASE_URL` to `apps/api/.env`, point `ACTORS_DIR` at the real actor project, and leave out `fake`:
+Start everything, then open http://localhost:5173. The review office for a permit is at `/office/<permit id>`, the id in the applicant URL:
 
 ```sh
-ACTORS_DIR=services/actors scripts/dev.sh
+scripts/dev.sh
 ```
 
-An `ar_ws_` Relay key needs `RELAY_BASE_URL=https://armadillo.agentrelay.com`. An `rk_live_` key uses the default host.
+`scripts/dev.sh local` runs the same Clerk, Building, and Zoning agents inside the API with no Relay keys. Use it if Relay is down.
+
+After you change the actor's methods, run this with the actor running:
+
+```sh
+(cd services/actors && bunx durable-actors generate --out-dir ../../apps/api/generated)
+```
 
 ## What stamp refuses to do
 

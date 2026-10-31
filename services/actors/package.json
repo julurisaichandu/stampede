@@ -1,0 +1,18 @@
+{
+  "name": "stamped-actors",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "dev": "durable-actors dev",
+    "generate": "durable-actors generate",
+    "check": "tsc --noEmit"
+  },
+  "dependencies": {
+    "durable-actors": "0.14.6",
+    "zod": "4.6.7"
+  },
+  "devDependencies": {
+    "@types/node": "^22.0.0",
+    "typescript": "~5.9.3"
+  }
+}

@@ -23,16 +23,16 @@ export type {
 /**
  * Types for actor state and socket messages.
  * @example
- * type State = actors.PermitActor.State
+ * type State = actors.Permit.State
  */
 export declare namespace actors {
-    namespace PermitActor {
-        type Metadata = $ActorTypes["PermitActor"]["Metadata"]
-        type Incoming = $ActorTypes["PermitActor"]["Incoming"]
-        type Outgoing = $ActorTypes["PermitActor"]["Outgoing"]
-        type State = $ActorTypes["PermitActor"]["State"]
+    namespace Permit {
+        type Metadata = $ActorTypes["Permit"]["Metadata"]
+        type Incoming = $ActorTypes["Permit"]["Incoming"]
+        type Outgoing = $ActorTypes["Permit"]["Outgoing"]
+        type State = $ActorTypes["Permit"]["State"]
         interface Authorization {
-            actorName: "PermitActor"
+            actorName: "Permit"
             actorId: string
             metadata: Metadata
             clientLocation?: {
@@ -45,12 +45,16 @@ export declare namespace actors {
 /**
  * Types for actor state and methods.
  * @example
- * type State = actors.PermitActor.State
+ * type State = actors.Permit.State
  */
 export declare namespace actors {
-    namespace PermitActor {
-        type Stub = $ActorTypes["PermitActor"]["Methods"]
+    namespace Permit {
+        type Stub = $ActorTypes["Permit"]["Methods"]
         interface $MethodTypes {
+            ["addFinding"]: {
+                Args: Parameters<Stub["addFinding"]>
+                Result: Awaited<ReturnType<Stub["addFinding"]>>
+            }
             ["appendChat"]: {
                 Args: Parameters<Stub["appendChat"]>
                 Result: Awaited<ReturnType<Stub["appendChat"]>>
@@ -59,9 +63,17 @@ export declare namespace actors {
                 Args: Parameters<Stub["applyIntakePatch"]>
                 Result: Awaited<ReturnType<Stub["applyIntakePatch"]>>
             }
+            ["claim"]: {
+                Args: Parameters<Stub["claim"]>
+                Result: Awaited<ReturnType<Stub["claim"]>>
+            }
             ["confirmIntake"]: {
                 Args: Parameters<Stub["confirmIntake"]>
                 Result: Awaited<ReturnType<Stub["confirmIntake"]>>
+            }
+            ["logRelay"]: {
+                Args: Parameters<Stub["logRelay"]>
+                Result: Awaited<ReturnType<Stub["logRelay"]>>
             }
             ["read"]: {
                 Args: Parameters<Stub["read"]>
@@ -80,10 +92,14 @@ export declare namespace actors {
         /**
          * Types for a method's arguments and return value.
          * @example
-         * type Args = actors.PermitActor.Methods["appendChat"]["Args"]
-         * type Result = actors.PermitActor.Methods["appendChat"]["Result"]
+         * type Args = actors.Permit.Methods["addFinding"]["Args"]
+         * type Result = actors.Permit.Methods["addFinding"]["Result"]
          */
         namespace Methods {
+            namespace addFinding {
+                type Args = $MethodTypes["addFinding"]["Args"]
+                type Result = $MethodTypes["addFinding"]["Result"]
+            }
             namespace appendChat {
                 type Args = $MethodTypes["appendChat"]["Args"]
                 type Result = $MethodTypes["appendChat"]["Result"]
@@ -92,9 +108,17 @@ export declare namespace actors {
                 type Args = $MethodTypes["applyIntakePatch"]["Args"]
                 type Result = $MethodTypes["applyIntakePatch"]["Result"]
             }
+            namespace claim {
+                type Args = $MethodTypes["claim"]["Args"]
+                type Result = $MethodTypes["claim"]["Result"]
+            }
             namespace confirmIntake {
                 type Args = $MethodTypes["confirmIntake"]["Args"]
                 type Result = $MethodTypes["confirmIntake"]["Result"]
+            }
+            namespace logRelay {
+                type Args = $MethodTypes["logRelay"]["Args"]
+                type Result = $MethodTypes["logRelay"]["Result"]
             }
             namespace read {
                 type Args = $MethodTypes["read"]["Args"]
@@ -114,18 +138,18 @@ export declare namespace actors {
 /**
  * Call actor methods from your backend.
  * @example
- * const actor = actors.PermitActor.get("actor-id")
+ * const actor = actors.Permit.get("actor-id")
  */
 export declare const actors: {
-    PermitActor: {
-        get(actorId: string, transport?: import("./runtime/index.js").ActorRpcTransport): actors.PermitActor.Stub
+    Permit: {
+        get(actorId: string, transport?: import("./runtime/index.js").ActorRpcTransport): actors.Permit.Stub
         /**
          * Allow a frontend connection after your backend checks the user's access.
          * @example
-         * const grant = await actors.PermitActor.prepareWebsocket({ actorId: "actor-id", metadata })
+         * const grant = await actors.Permit.prepareWebsocket({ actorId: "actor-id", metadata })
          */
         prepareWebsocket(
-            authorization: Omit<actors.PermitActor.Authorization, "actorName">,
+            authorization: Omit<actors.Permit.Authorization, "actorName">,
             options?: import("./runtime/index.js").SocketProxyOptions,
             dependencies?: import("./runtime/index.js").SocketProxyDependencies
         ): Promise<import("./runtime/index.js").SocketGrant>
@@ -134,16 +158,16 @@ export declare const actors: {
 /**
  * The actor and connection details approved by your backend.
  * @example
- * const authorization: ActorAuthorization = { actorName: "PermitActor", actorId: "actor-id", metadata }
+ * const authorization: ActorAuthorization = { actorName: "Permit", actorId: "actor-id", metadata }
  */
-export type ActorAuthorization = actors.PermitActor.Authorization
+export type ActorAuthorization = actors.Permit.Authorization
 /**
  * Allow a frontend connection after your backend checks the user's access.
  * @example
- * const grant = await ActorProxy.handle({ actorName: "PermitActor", actorId: "actor-id", metadata })
+ * const grant = await ActorProxy.handle({ actorName: "Permit", actorId: "actor-id", metadata })
  */
 export declare class ActorProxy extends $SocketProxy<{
-    ["PermitActor"]: import("./runtime/index.js").ProxyActor<actors.PermitActor.Metadata>
+    ["Permit"]: import("./runtime/index.js").ProxyActor<actors.Permit.Metadata>
 }> {
     constructor(
         options?: import("./runtime/index.js").SocketProxyOptions,

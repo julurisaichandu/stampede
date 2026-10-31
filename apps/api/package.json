@@ -5,12 +5,14 @@
   "scripts": {
     "dev": "tsx watch --env-file-if-exists=.env src/server.ts",
     "start": "tsx --env-file-if-exists=.env src/server.ts",
-    "demo": "FAKE_OFFICE=1 tsx --env-file-if-exists=.env src/server.ts",
     "check:gis": "tsx src/gis.check.ts",
     "check:turn": "tsx --env-file=.env src/intake/turn.check.ts",
     "check:demo": "tsx --env-file=.env src/demo.check.ts",
     "golden": "tsx --env-file=.env src/intake/golden.ts",
-    "typecheck": "tsc --noEmit"
+    "typecheck": "tsc --noEmit",
+    "agents": "tsx src/agents/index.ts",
+    "accept": "tsx --env-file=.env scripts/accept-flow.ts",
+    "relay:register": "tsx scripts/register-agents.ts"
   },
   "dependencies": {
     "@agent-relay/sdk": "15.0.1",
