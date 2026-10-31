@@ -21,6 +21,14 @@ export function mergeFrame(id: string, permit: PermitApplication | null, frame: 
   return next
 }
 
+// The grant names the actor's loopback address, which only this page's own host can reach.
+function socketUrl(grant: string) {
+  const url = new URL(grant)
+  url.protocol = location.protocol === 'https:' ? 'wss:' : 'ws:'
+  url.host = location.host
+  return url.href
+}
+
 const MAX_RETRY_MS = 8_000
 const STALLED_AFTER = 3
 
@@ -64,7 +72,7 @@ export function usePermit(id: string): Omit<Live, 'id'> {
       }
       if (cancelled) return
 
-      const ws = new WebSocket(grant.websocketUrl)
+      const ws = new WebSocket(socketUrl(grant.websocketUrl))
       socket = ws
       ws.addEventListener('message', (event) => {
         if (cancelled) return

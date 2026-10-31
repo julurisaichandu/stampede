@@ -56,6 +56,13 @@ const FindingIds = z.array(z.string())
 
 const assistant = (content: string, at = new Date().toISOString()): ChatMessage => ({ role: "assistant", content, at })
 
+// ponytail: one counter for the whole process, no per-visitor limit. It caps what a shared link can spend.
+let paidCallsLeft = Number(process.env.MAX_PAID_CALLS ?? 3000)
+
+function spend() {
+  if (paidCallsLeft-- <= 0) throw new HTTPException(429, { message: "This demo has reached its limit for today." })
+}
+
 // ponytail: one promise per permit for the life of the process, and one API process only.
 const tails = new Map<string, Promise<unknown>>()
 
@@ -249,6 +256,7 @@ const planLimit = bodyLimit({
 app.use("/api/*", (c, next) => (c.req.path.endsWith("/plan") ? planLimit : messageLimit)(c, next))
 
 app.post("/api/permits", async (c) => {
+  spend()
   const id = randomUUID()
   await permitActor(id).appendChat(assistant(GREETING))
   openPermitChannel(id).catch((err) => console.warn("[relay] background open failed", err))
@@ -263,6 +271,7 @@ app.get("/api/permits/:id", async (c) => {
 app.post("/api/permits/:id/chat", async (c) => {
   const id = permitId(c)
   const { text } = await readBody(c, ChatBody)
+  spend()
   return c.json<ChatResponse>(await serial(id, () => chatTurn(id, text)))
 })
 
