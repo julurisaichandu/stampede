@@ -15,6 +15,55 @@ stampede files nothing and approves nothing. A person at the city still makes th
 
 Built at Haunted Hacks, Real-Time AI Edition, on October 31, 2026.
 
+## What it looks like
+
+These screenshots come from a real run with the sample plan, [`input/sample-deck-plan.pdf`](input/sample-deck-plan.pdf), then the revised plan.
+
+**1. Upload a plan or describe your deck.** stampede reads the plan, finds the lot in the city's records, and fills in the application sheet.
+
+![Homeowner screen after a plan upload. The chat lists what stampede read from the plan, and the application sheet shows the city record (APN 59531001, zoning R-1-8) and the deck's size, height, and ledger.](docs/screenshots/01-homeowner-plan-read.jpg)
+
+**2. Run the pre-review.** Four checks come back, each with the rule it comes from. The railing is 36 inches, and the code asks for 42.
+
+| Homeowner screen | Officer screen |
+| --- | --- |
+| ![Four findings: permit PASS, railing CORRECTION, ledger connection PASS, rear setback NEEDS HUMAN VERIFICATION, each with its source.](docs/screenshots/02-homeowner-findings.jpg) | ![Officer screen at Corrections: the review checklist, the Agent Relay messages between the agents, and the audit trail.](docs/screenshots/03-officer-review.jpg) |
+
+**3. Fix what was flagged.** Upload the revised plan or type the new height. Only the railing check runs again, and the pre-review completes.
+
+| Homeowner screen | Officer screen |
+| --- | --- |
+| ![Revision 2 submitted, and the PRE-REVIEW COMPLETE stamp on the application sheet.](docs/screenshots/04-homeowner-complete.jpg) | ![Officer screen at Pre-review complete, with every step checked and the rear setback carried to a City planner.](docs/screenshots/05-officer-complete.jpg) |
+
+**4. Take the draft packet.** It is marked UNOFFICIAL DRAFT and lists what is still open for the city.
+
+<img src="docs/screenshots/06-draft-packet.jpg" alt="Draft permit packet with an UNOFFICIAL DRAFT, NOT FILED WITH THE CITY banner, the project summary, and the property." width="70%">
+
+### What the agents said
+
+This is the Agent Relay conversation from the typed run in the [finished live review](https://5173-9b9e5da6-6585-4590-9fae-e3e78d5df75a.sandbox.superserve.ai/office/4b4bc7c6-34a8-40f1-b1c7-291e09b22072) above. The officer screen shows these lines as they arrive. `r1` and `r2` are the revisions.
+
+```text
+r1  intake    Intake sent the file to Clerk.
+r1  clerk     Revision 1 frozen. Building and Zoning, please review.
+r1  zoning    SJ-ZONING-01 needs a City planner: The rear setback for your attached deck isn't confirmed. Please review
+              San Jose Municipal Code Ch. 20.30, Table 20-60 (§20.30.200) and §20.30.400 with a City planner.
+r1  building  SJ-DETAIL-01 needs more information: The deck is connected to the house, but the plans don't show how
+              it's attached. Please include details about the ledger connection.
+r1  building  CRC-GUARD-01 needs a correction: Your deck guard is 36 inches high, but California requires it to be
+              at least 42 inches for decks 36 inches above ground.
+r1  building  SJ-PERMIT-01 passes: You need a building permit for anything 36 inches above ground (or 30 inches at
+              any point) that is attached to your home.
+r1  clerk     Sent back to the homeowner: CRC-GUARD-01 needs attention.
+r2  intake    Intake sent revision 2 to Clerk.
+r2  clerk     Revision 2 frozen with deck.guardHeightIn changed. Building and Zoning, please recheck.
+r2  zoning    Zoning finished revision 2: nothing in its scope changed.
+r2  building  CRC-GUARD-01 passes: The deck guard is 42 inches high, which meets the minimum requirement of 42 inches.
+r2  clerk     Pre-review complete. SJ-ZONING-01 and SJ-DETAIL-01 carry into the packet.
+```
+
+The rules decide each result. OpenAI only rewords the explanation, and the verdict at the start of each line comes from code.
+
 ## The services we used
 
 stampede runs on products from four Haunted Hacks sponsors.
