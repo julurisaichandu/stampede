@@ -30,6 +30,7 @@ function socketUrl(grant: string) {
 }
 
 const MAX_RETRY_MS = 8_000
+const POLL_MS = 1_000
 const STALLED_AFTER = 3
 
 const initial = (id: string): Live => ({ id, permit: null, connected: false, missing: false, stalled: false })
@@ -40,8 +41,10 @@ export function usePermit(id: string): Omit<Live, 'id'> {
   useEffect(() => {
     let cancelled = false
     let socket: WebSocket | null = null
+    let socketLive = false
     let retry: ReturnType<typeof setTimeout> | undefined
     let attempt = 0
+    let misses = 0
 
     const update = (change: (prev: Live) => Partial<Live>) =>
       setLive((prev) => {
@@ -51,11 +54,33 @@ export function usePermit(id: string): Omit<Live, 'id'> {
 
     const reconnect = () => {
       if (cancelled) return
+      socketLive = false
       const delay = Math.min(500 * 2 ** attempt, MAX_RETRY_MS)
       attempt += 1
-      const stalled = attempt >= STALLED_AFTER
-      update(() => ({ connected: false, stalled }))
       retry = setTimeout(connect, delay)
+    }
+
+    // A proxy can hold a browser's socket open and never answer, so HTTP carries the record until a frame arrives.
+    async function read() {
+      if (socketLive) return
+      try {
+        const res = await fetch(`/api/permits/${encodeURIComponent(id)}`)
+        if (cancelled || socketLive) return
+        if (res.status === 404) return update(() => ({ missing: true, connected: false }))
+        if (!res.ok) throw new Error(`read failed: ${res.status}`)
+        const state = (await res.json()) as PermitApplication
+        if (cancelled || socketLive) return
+        misses = 0
+        update(() => ({
+          connected: true,
+          missing: false,
+          stalled: false,
+          permit: mergeFrame(id, null, { type: 'state', state }),
+        }))
+      } catch {
+        misses += 1
+        if (!cancelled && !socketLive) update(() => ({ connected: false, stalled: misses >= STALLED_AFTER }))
+      }
     }
 
     // Grants last about 60 s, so every attempt fetches a new one.
@@ -78,6 +103,7 @@ export function usePermit(id: string): Omit<Live, 'id'> {
         if (cancelled) return
         const frame = JSON.parse(event.data) as Frame
         if (frame.type === 'state') {
+          socketLive = true
           attempt = 0
           update(() => ({ connected: true, missing: false, stalled: false }))
         }
@@ -87,8 +113,11 @@ export function usePermit(id: string): Omit<Live, 'id'> {
     }
 
     connect()
+    read()
+    const poll = setInterval(read, POLL_MS)
     return () => {
       cancelled = true
+      clearInterval(poll)
       clearTimeout(retry)
       socket?.close()
     }
