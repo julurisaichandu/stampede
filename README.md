@@ -2,11 +2,70 @@
 
 stampede runs the city's review before you submit.
 
+| Live demo | Open it |
+| --- | --- |
+| Homeowner screen | [Start a new pre-review](https://5173-9b9e5da6-6585-4590-9fae-e3e78d5df75a.sandbox.superserve.ai) or [open a finished one](https://5173-9b9e5da6-6585-4590-9fae-e3e78d5df75a.sandbox.superserve.ai/permits/4b4bc7c6-34a8-40f1-b1c7-291e09b22072) |
+| Officer screen | [Open a finished review](https://5173-9b9e5da6-6585-4590-9fae-e3e78d5df75a.sandbox.superserve.ai/office/4b4bc7c6-34a8-40f1-b1c7-291e09b22072). To watch your own review live, copy your page URL into a second window and change `/permits/` to `/office/`. |
+
 A backyard deck in San Jose often needs a city permit. If your plans have a mistake, you usually find out after you file, when a city reviewer sends them back. stampede checks your deck first, so you can fix problems before the city sees them.
 
 stampede files nothing and approves nothing. A person at the city still makes the decision.
 
 Built at Haunted Hacks, Real-Time AI Edition, on October 31, 2026.
+
+## How to use it
+
+You can type your deck or upload plans. Use a new permit for each run. The chat wording changes between runs, but the findings, statuses, and numbers do not.
+
+### By typing
+
+1. Open the [homeowner screen](https://5173-9b9e5da6-6585-4590-9fae-e3e78d5df75a.sandbox.superserve.ai). Paste this into the box and click **Start my pre-review**.
+
+   ```text
+   I want a backyard deck at 14630 Noble Ave, San Jose, about 16 by 12 feet.
+   ```
+
+   The address, APN 59531001, zoning R-1-8, and 16 by 12 ft fill in, and the chat asks for the height.
+
+   Now open the officer screen. Copy the page URL into a second window and change `/permits/` to `/office/`. It shows the address, status Intake, and all four rules on Waiting. You type nothing on this screen.
+
+2. Paste this into the homeowner chat.
+
+   ```text
+   attached, about 36 inches high, railing 36 inches.
+   ```
+
+   The file shows the height, the attachment, and the railing. Ledger and rear setback stay UNKNOWN, and the button changes to **Run pre-review**.
+
+3. Click **Run pre-review**. Four cards appear on the homeowner screen.
+
+   | Card | Result |
+   | --- | --- |
+   | Permit | PASS |
+   | Railing | CORRECTION |
+   | Connection | NEEDS INFORMATION |
+   | City planner | NEEDS HUMAN VERIFICATION |
+
+   The chat tells you the railing is 36 in and must be 42 in. The officer screen changes to Corrections, shows the same results, and fills with the agents' messages.
+
+4. Paste this into the homeowner chat.
+
+   ```text
+   I'll make the railing 42 inches.
+   ```
+
+   The homeowner screen shows Revision 2, the railing flips to PASS, and the PRE-REVIEW COMPLETE stamp lands. On the officer screen, only Guard height reruns, and the status changes to Pre-review complete.
+
+5. Click **Go to the packet**. A draft packet opens with a red UNOFFICIAL DRAFT banner.
+
+### By uploading plans
+
+1. Open the [homeowner screen](https://5173-9b9e5da6-6585-4590-9fae-e3e78d5df75a.sandbox.superserve.ai) again for a new permit. Click **Upload plans**, choose [`input/sample-deck-plan.pdf`](input/sample-deck-plan.pdf), and click **Start my pre-review**. The whole sheet fills in.
+2. Paste `yes, that's right` into the chat, then click **Run pre-review**. The railing is CORRECTION, and the connection is PASS this time.
+3. Click **Upload plans** in the chat, choose [`input/sample-deck-plan-revised.pdf`](input/sample-deck-plan-revised.pdf), and click **Send**. The railing flips to PASS and the stamp lands.
+4. Click **Go to the packet**.
+
+If you see the word "approved" as a result, a permit number, or raw JSON on either screen, something is wrong.
 
 ## How it works
 
@@ -20,11 +79,22 @@ Here is an example. A deck sits 36 inches above the ground with a 36-inch railin
 
 AI reads what you type and upload, and it explains the results in plain English. It does not decide anything. Fixed rules written in code decide every result.
 
-A second screen, the review office, shows the same file while the agents work. It shows the checklist, the agents' messages to each other, and a log of every step. Nobody types there.
+A second screen, the officer screen, shows the same file while the agents work. It shows the checklist, the agents' messages to each other, and a log of every step. Nobody types there.
 
 ## The services we used
 
-Each branch is a service we used, or our own code, and the job it does. [Services in detail](#services-in-detail) has the technical version.
+stampede runs on products from four Haunted Hacks sponsors.
+
+| | Sponsor | What it does in stampede |
+| --- | --- | --- |
+| <a href="https://openai.com"><img src="docs/logos/openai.png" alt="OpenAI logo" width="48"></a> | **[OpenAI](https://openai.com)** | Reads chat messages and uploaded plans, and explains the results in plain English. |
+| <a href="https://www.useterse.ai"><img src="docs/logos/terse.png" alt="Terse logo" width="48"></a> | **[Terse](https://www.useterse.ai)** | Durable Actors holds one record for each permit. Both screens read it live, and it survives restarts. |
+| <a href="https://agentrelay.com"><img src="docs/logos/agent-relay.png" alt="Agent Relay logo" width="48"></a> | **[Agent Relay](https://agentrelay.com)** | Carries the messages between the Intake, Clerk, Building, and Zoning agents, with one channel for each permit. |
+| <a href="https://superserve.ai"><img src="docs/logos/superserve.png" alt="Superserve logo" width="48"></a> | **[Superserve](https://superserve.ai)** | Hosts the live demo in a cloud sandbox, so the links at the top of this page work without anyone's laptop. |
+
+The address, lot, and zoning data comes from the City of San Jose's public GIS services. The city is a data source, not a sponsor.
+
+In this map, each branch is a service we used, or our own code, and the job it does. [Services in detail](#services-in-detail) has the technical version.
 
 ```mermaid
 mindmap
@@ -37,12 +107,12 @@ mindmap
       Confirms the address
       Finds the lot
       Finds the zoning
-    Docker, the server
-      One container runs it all
+    Superserve, the server
+      Hosts the live demo
     Agent Relay, the group chat
       One channel per permit
       Four agents talk here
-    Durable Actors, the file cabinet
+    Terse Durable Actors, the file cabinet
       One record per permit
       Survives restarts
       Only Clerk changes the status
@@ -52,7 +122,7 @@ mindmap
       Every result cites its source
     Our app, built with React and Hono
       Homeowner chat and file
-      Review office screen
+      Officer screen
       Draft packet
 ```
 
@@ -65,7 +135,7 @@ Relay is for talking. The record is for remembering.
 ```mermaid
 flowchart TB
     home["Homeowner screen"]
-    office["Office screen"]
+    office["Officer screen"]
     api["Our server and the Intake agent"]
     openai["OpenAI"]
     gis["San Jose GIS"]
@@ -140,7 +210,9 @@ After you change the actor's methods, run this with the actor running:
 
 ## Run it on a server
 
-The `Dockerfile` builds one image that holds the actor, the API, the agents, and the built web app. `scripts/cloud.sh` starts all four and restarts any that exit. Port 5173 is the only public port.
+The live demo runs `scripts/cloud.sh` in a Superserve sandbox named `stampede`, with its own Relay workspace.
+
+To run your own copy, the `Dockerfile` builds one image that holds the actor, the API, the agents, and the built web app. `scripts/cloud.sh` starts all four and restarts any that exit. Port 5173 is the only public port.
 
 ```sh
 docker build -t stampede .
@@ -180,13 +252,14 @@ The homeowner can also upload plans instead of typing, as a PDF, PNG, JPEG, or W
 | [San Jose GIS](https://geo.sanjoseca.gov/server/rest/services) | Supplies the address match, parcel, APN, and zoning | Three ArcGIS REST services: the address locator, parcel layer 49, and zoning layer 401. Each call has a 4 second timeout. A recorded response for Noble Ave is the only fallback. | `apps/api/src/gis.ts`, `apps/api/fixtures/noble-house.*` |
 | [Agent Relay](https://agentrelay.com/docs/typescript-sdk) | Carries messages between Intake, Clerk, Building, and Zoning | `@agent-relay/sdk` 15.0.1 on a hosted workspace at `armadillo.agentrelay.com`. One `#permit-<id>` channel per permit. | `apps/api/src/relay.ts`, `apps/api/src/agents/relay.ts` |
 | [Durable Actors](https://github.com/TerseAI/durable-actors) | Holds the only record | `durable-actors` 0.14.6 from Terse, under Bun on port 7100. One `Permit` actor per application. Both screens read it over a WebSocket, and over HTTP every second until the first socket frame arrives. | `services/actors/src/Permit.ts`, `apps/api/generated/` |
-| Docker | Runs everything on one server | One container, four processes. | `Dockerfile`, `scripts/cloud.sh` |
+| [Superserve](https://superserve.ai) | Hosts the live demo | One cloud sandbox runs the actor, the API, the agents, and the web app. Superserve serves port 5173 at the public URL. | `scripts/cloud.sh` |
+| Docker | Runs your own copy on one server | One container, four processes. | `Dockerfile`, `scripts/cloud.sh` |
 
 Our own code sits around those services:
 
 | Folder | Built with | Job |
 | --- | --- | --- |
-| `apps/web` | React 19, Vite 8, plain CSS | The homeowner screen, the office screen, and the packet |
+| `apps/web` | React 19, Vite 8, plain CSS | The homeowner screen, the officer screen, and the packet |
 | `apps/api` | Node 24, Hono, Zod | Routes, the GIS lookup, OpenAI calls, the rules, and the agents |
 | `services/actors` | Bun, Durable Actors, Zod | The `Permit` actor |
 
@@ -287,7 +360,7 @@ Deterministic rules decide every finding. The model explains them and never deci
 ```text
 apps/web/                 React screens
   src/applicant/          landing page, chat, application sheet, findings, stamp, packet
-  src/office/             review office screen
+  src/office/             officer screen
   src/lib/                API calls, live permit hook, navigation
 apps/api/                 Node server and agents
   contracts.ts            shared types, statuses, and legal status moves
@@ -315,7 +388,7 @@ docs/                     plans and research from the build
 | `/` | Landing page |
 | `/permits/:id` | Homeowner chat and file |
 | `/permits/:id/packet` | Draft packet, ready to print |
-| `/office/:id` | Review office: checklist, Agent Relay feed, and audit trail |
+| `/office/:id` | Officer screen: checklist, Agent Relay feed, and audit trail |
 | `/dev` | Saved screen states, in development builds only |
 
 | API route | Job |
@@ -369,9 +442,10 @@ The API reads these from `apps/api/.env`.
 - It runs four checks, far fewer than a full city plan review. It does not check whether a ledger connection is strong enough.
 - The citations were researched indirectly. The San Jose site returned 403 to automated fetches, so the city text came from Wayback snapshots, and the California code came from a mirror and government handouts. Only a draft of San Jose's 2025 amendment was read. Check the citations against the live sources before you rely on them.
 - The GIS has no land-use field, so stampede cannot tell a house from any other building.
-- Anyone with a permit link can open that permit and its office screen. There are no accounts.
+- Anyone with a permit link can open that permit and its officer screen. There are no accounts.
 - stampede runs as one server. The per-permit queue and the paid-call counter live in one API process, and the actor runs under `durable-actors dev`.
-- `MAX_PAID_CALLS` does not count plan uploads.
+- The live demo is one Superserve sandbox. It stays on until someone pauses or deletes it, and new commits reach it only when someone redeploys. If a link at the top of this page is down, use [Run it](#run-it).
+- Anyone with the live link can use the demo and spend its OpenAI credits. `MAX_PAID_CALLS` limits that spending, but it does not count plan uploads.
 
 ## Older docs in this repo
 
