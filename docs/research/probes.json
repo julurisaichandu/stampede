@@ -1,0 +1,870 @@
+{
+ "done": [
+  {
+   "lane": "gis",
+   "summary": "The San Jose GIS path works end to end. A PointAddress match took about 0.2s total and returned 1 parcel, 1 zoning polygon and a real 8-digit APN.\nAll 10 named fields exist on the live layers: APN, PARCELID, ZONING, ZONINGABBREV, REZONINGFILE, PDUSE, NOTES. Layer 49 has no owner or situs fields.\nPlan corrections:\n(1) The locator is NOT city-only. A Cupertino address scored 100 with City=Cupertino, so check attributes.City as well as score.\n(2) StreetAddress (interpolated) matches sit on the street and miss zoning. All 3 tested missed zoning, and both parcel checks missed too. A 15 m buffer returns 2 parcels, so it is ambiguous and needs user confirmation.\n(3) A typo gives two candidates at or above 90 (E 97.52, W 91.01), so ask the user to choose.\n(4) \"R-1-8\" is literal, but R-1-8(PD) and R-1-8(CL) also exist. Parse the base district and overlay.\n(5) Unit text is silently dropped, still at score 100.\nDemo: use 14630 Noble Ave (Noble House Neighborhood Center). It is a public facility, R-1-8, score 100, 1 parcel, APN 59531001, no rezoning file. Fixtures are saved for 4 public sites. None is a single-family home, and none is a verified single-family parcel.\nWest-side schools, libraries and churches I tried came back PQP (10 of 10), so do not improvise an address on stage.\nNot verified: a private home, a real unincorporated pocket, and browser CORS. I made 73 requests, over the ~60 budget, so I stopped instead of testing those.",
+   "facts": [
+    {
+     "question": "Which fields exist on layer 49 (Parcels)?",
+     "answer": "OBJECTID, PARCELID, APN, LOTNUM, SHAPE, ENTERPRISEID. APN and PARCELID exist as strings. There are no situs address or owner fields, so nothing needs hiding, and the display address must come from the geocoder. maxRecordCount 2000, spatial reference wkid 102643 (latest 2227).",
+     "source": "curl https://geo.sanjoseca.gov/server/rest/services/PLN/PLN_Geocortex_Public_PRD/MapServer/49?f=json",
+     "confidence": "observed"
+    },
+    {
+     "question": "Which fields exist on layer 401 (Zoning District)?",
+     "answer": "OBJECTID, FACILITYID, INTID, ZONING, ZONINGABBREV, REZONINGFILE, PDUSE, PDDENSITY, DEVELOPEDASPD, APPROVALDATE, COLORCODE, LASTUPDATE, NOTES, SHAPE, SHAPE_Length, SHAPE_Area. ZONING, ZONINGABBREV, REZONINGFILE, PDUSE and NOTES all exist.",
+     "source": "curl https://geo.sanjoseca.gov/server/rest/services/OPN/OPN_OpenDataService/MapServer/401?f=json",
+     "confidence": "observed"
+    },
+    {
+     "question": "What does a good match look like, and is one parcel plus one zone the normal result?",
+     "answer": "Yes for PointAddress in the 5 full pipeline runs: City Hall plus 4 R-1-8 sites each gave 1 candidate at score 100, 1 parcel, 1 zoning polygon. City Hall: 200 E Santa Clara St at -121.885871,37.337544, APN 46724117, PARCELID 1005371, LOTNUM null, ZONING PQP, REZONINGFILE C22-106, PDUSE null, NOTES 'SB1333 Rezoning_DT_DSAP_Growth Area 5'. The 9 other PointAddress sites each returned 1 zoning polygon (parcel not requested).",
+     "source": "live geocode, layer 49 and layer 401 queries; scripts p2.py and p4.py in the scratchpad research/gis/scripts directory",
+     "confidence": "observed"
+    },
+    {
+     "question": "What is the APN format?",
+     "answer": "8 digits with no dashes, e.g. 46724117, 59531001, as strings. PARCELID varies in length (1005371, 103252, 45671). A dashed display such as 595-31-001 would be our own formatting, not city output.",
+     "source": "layer 49 point queries",
+     "confidence": "observed"
+    },
+    {
+     "question": "What do real zoning strings look like?",
+     "answer": "'R-1-8' is literal, with 4120 polygons. Layer 401 also has R-1-8(PD) 455, R-1-8(CL) 58, R-1-5, R-1-1, R-1-2, R-1-RR, R-2, R-M, R-MH, A, A(PD) 2827, PQP 426, OS, CG, CP, DC and others: 56 distinct values, including one null ZONING group. ZONINGABBREV equalled ZONING wherever I read it, but that was a small sample.",
+     "source": "layer 401 query with groupByFieldsForStatistics=ZONING (p1.py); returnCountOnly where ZONING='R-1-8'",
+     "confidence": "observed"
+    },
+    {
+     "question": "Is the locator city-only?",
+     "answer": "No. '10600 N Tantau Ave Cupertino' returned score 100, City=Cupertino, Addr_type=StreetAddress, with empty parcel and zoning results. Other outside cases: '1 Infinite Loop Cupertino CA' returned 0 candidates. '1600 Amphitheatre Pkwy Mountain View' returned 61.36 'Fountain View Dr, San Jose', Addr_type=StreetName. '200 E Santa Clara St Mountain View' returned 74.29 with the San Jose address, and the runner-up was 200 W at 68.92.",
+     "source": "findAddressCandidates live queries (p1.py, p2.py)",
+     "confidence": "observed"
+    },
+    {
+     "question": "What do gibberish, unit, typo and empty inputs return?",
+     "answer": "'asdf qwerty zzzz' and the empty string return HTTP 200 with candidates=[]. 'Apt 5' and 'Unit 101' return the bare building address at score 100, and the unit is dropped from Match_addr. '200 E Santa Clarra St' returns 2 candidates: E at 97.52 (PointAddress) and W at 91.01 (StreetAddress). 'No city' input (200 E Santa Clara St) scored 100.",
+     "source": "findAddressCandidates live queries (p1.py, p2.py)",
+     "confidence": "observed"
+    },
+    {
+     "question": "What score threshold fits the evidence?",
+     "answer": "90, combined with attributes.City === 'San Jose'. Good and typo matches scored 97.52 to 100. Bad matches scored 61.36 and 74.29. The sample is small, and 91.01 was a wrong-street runner-up, so score alone is not enough. More than one candidate at or above 90 must trigger a user choice. The service advertises MinimumMatchScore 80 and MinimumCandidateScore 60, yet it returned 61.36, so we need our own filter.",
+     "source": "locator metadata (GeocodeServer?f=json) plus the scores above",
+     "confidence": "inferred"
+    },
+    {
+     "question": "What does a parcel miss look like, and does a buffer rescue it?",
+     "answer": "A miss is HTTP 200 with features=[] and no error. '200 W Santa Clara St' (StreetAddress) returned empty parcel and empty zoning. With distance=15&units=esriSRUnit_Meter it returned 2 parcels (25939122, 25940092) and 2 zoning polygons (both DC). The buffer finds neighbours but does not choose one. '1635 Park Ave' (StreetAddress) also returned empty zoning; its parcel was not queried, and no buffer was tried there. All 3 StreetAddress results tested missed zoning. None of the PointAddress results did.",
+     "source": "layer 49 and 401 point and buffer queries (p2.py)",
+     "confidence": "observed"
+    },
+    {
+     "question": "What is the latency, and does a 4s timeout make sense?",
+     "answer": "Run 1 was 4 pipelines; runs 2 and 3 repeated 800 Emory St. Pipeline totals (sequential) over 7 runs: min 0.16s, median 0.19s, max 0.28s. Per call: geocode median 0.06s, parcel 0.06s, zoning 0.05s. Outliers elsewhere: zoning 3.06s (1635 Park Ave), geocode 0.95s (Tantau), layer 342 query 3.02s. 4s per call makes sense. It clears the worst sample but not by much, and the sample is small and was taken at one time of day.",
+     "source": "p4.py timing output; p2.py timing output; p3.py output",
+     "confidence": "observed"
+    },
+    {
+     "question": "Which demo candidates meet the criteria?",
+     "answer": "All are public facilities, ZONING exactly R-1-8, score 100, PointAddress, City San Jose, 1 parcel, 1 APN. (1) 14630 Noble Ave 95132, Noble House Neighborhood Center, APN 59531001, PARCELID 103252, no rezoning file. RECOMMENDED. (2) 2039 Kammerer Ave 95116, Mayfair Community Center, APN 48123049, PARCELID 71227, no rezoning file. (3) 3311 Noble Ave 95132, Berryessa Branch Library, APN 59502009, PARCELID 102197, no rezoning file. (4) 800 Emory St 95126, Fire Station 7, APN 26110009, PARCELID 45671, REZONINGFILE C22-047. No private homes were used. Names come from city layers 187, 188 and 280; ownership and on-site use were not checked.",
+     "source": "p3.py (city facility layers 280/187/188 intersected with R-1-8 polygons), p4.py pipeline; fixtures in the research/gis/fixtures scratchpad directory",
+     "confidence": "observed"
+    },
+    {
+     "question": "Are schools, libraries and churches in R-1-8?",
+     "answer": "Not reliably. All 10 addresses I tried from memory (including school and library addresses on the west side) came back PQP, with rezoning files such as C25-008, C24-020, C23-120, except 1635 Park Ave which had no zoning hit. 9 of 10 were PQP. Facility names for those 10 were from memory, not verified. The city School layer did show many east and north side schools inside R-1-8 by centroid.",
+     "source": "p2.py and p3.py",
+     "confidence": "observed"
+    },
+    {
+     "question": "Do private single-family homes, unincorporated pockets and browser CORS behave as assumed?",
+     "answer": "Unverified. reverseGeocode returned 400 'Unable to find address' for the 2 points I tried, including a point meant to sit in the Burbank pocket, and I stopped for budget. Layers 374 (Annexation Areas) and 403 (Urban Growth Boundary) exist if city limits matter later. The plan already proxies GIS from the API, so CORS should not matter.",
+     "source": "reverseGeocode live calls (p4.py); OPN_OpenDataService/MapServer/layers?f=json",
+     "confidence": "unverified"
+    }
+   ],
+   "planImpact": [
+    "The plan must not assume the locator is city-only. Accept only when score >= 90 AND attributes.City === 'San Jose' AND Addr_type is PointAddress or StreetAddress. A Cupertino address scores 100.",
+    "Add a rule: if more than one candidate is >= 90, status is needs_confirm and the user chooses. The 'Clarra' typo returned E 97.52 and W 91.01.",
+    "Treat StreetAddress as low trust. The point falls on the street, and parcel and zoning come back empty. If either lookup is empty, retry with distance=15&units=esriSRUnit_Meter, list the APNs on the match card, and let the user choose. Never auto-pick from a buffer: it returned 2 parcels.",
+    "An empty feature list is HTTP 200, not an error. The adapter must check features.length, not the status code. Empty geocode candidates are also HTTP 200.",
+    "Zoning needs base and overlay, not string equality. Parse R-1-8(PD) into base R-1-8 and overlay PD. SJ-ZONING-01 must return NEEDS HUMAN VERIFICATION when an overlay is present or ZONING is null. Plan line 236 assumes a plain district.",
+    "The property contract in apps/api/contracts.ts lacks fields. Add source: 'live' | 'fixture' and fetchedAt, or the 'demo cached data' label has nothing to key off. Also add addrType, parcelId, rezoningFile and userUnit. lookupConfidence should be the locator score (0 to 100) unless the contract states otherwise.",
+    "Keep the user's unit in a separate field. The locator drops it and still reports 100, so a unit-bearing input looks like an exact match on the bare building.",
+    "The plan's 'single-family parcel' cannot be proved from GIS. Layer 49 has no land-use field, and zoning is the only signal available. PQP and (PD) addresses should be flagged, not treated as verified single-family.",
+    "Demo script: pick 14630 Noble Ave and do not improvise. 9 of 10 addresses I tried from memory were PQP, which would break the R-1-8 line. Be honest on stage that this is a public site standing in for a home: a neighbourhood center has no homeowner.",
+    "Timeouts: 4s per call, then fixture fallback. Geocode first, then run parcel and zoning in parallel. Do not make 4s the total budget. The worst case is around 8s sequentially, though the normal total is about 0.2s.",
+    "Empty zoning for a San Jose City value may indicate a county pocket or a street-centre point; these cannot yet be told apart. Do not label that result 'outside the city' without confirmation. Unincorporated pockets remain untested.",
+    "Spec line 87 asks for parcel geometry with returnGeometry=true. I ran with false, so the outline shape is untested. A parcel polygon is not needed for the match card, so skip it unless an outline is wanted."
+   ],
+   "codeSnippets": [
+    {
+     "title": "Normalized adapter result",
+     "code": "type GisLookup = {\n  status: 'matched' | 'needs_confirm' | 'out_of_city' | 'not_found';\n  source: 'live' | 'fixture';\n  fetchedAt: string;              // ISO\n  matchedAddress?: string;        // attributes.Match_addr\n  userUnit?: string;              // locator drops units\n  lat?: number; lng?: number;     // location.y, location.x (outSR=4326)\n  score?: number;                 // 0-100\n  addrType?: string;              // PointAddress | StreetAddress | StreetName\n  city?: string;                  // attributes.City\n  apn?: string;                   // 8 digits, no dashes, e.g. '59531001'\n  parcelId?: string;\n  zoningRaw?: string;             // 'R-1-8(PD)'; null ZONING exists\n  zoningBase?: string;            // 'R-1-8'\n  zoningOverlay?: string;         // 'PD' | 'CL'\n  rezoningFile?: string;          // 'C22-047' or undefined\n  candidates: { address: string; score: number; addrType: string; apn?: string; zoning?: string; lng: number; lat: number }[];\n};",
+     "source": "Derived from observed responses; fixtures in research/gis/fixtures"
+    },
+    {
+     "title": "Decision order for status",
+     "code": "// 0 candidates, or best score < 90            -> not_found\n// best.City !== 'San Jose'                    -> out_of_city\n// >1 candidate >= 90                          -> needs_confirm\n// parcel or zoning != exactly 1 feature       -> retry 15 m buffer, list candidates, needs_confirm\n// else                                        -> matched\nconst [zoningBase, zoningOverlay] = (zoningRaw.match(/^([^(]+)(?:\\((\\w+)\\))?$/) ?? []).slice(1);",
+     "source": "Rules inferred from p1.py, p2.py and p4.py results; the regex was not run against all 56 values"
+    }
+   ],
+   "artifacts": [
+    "/private/tmp/claude-501/-Users-jsc-saichandu-github-stampede/1666b120-2e0e-4758-9f53-ad7d8abec5f2/scratchpad/research/gis/fixtures/noble-house.geocode.json",
+    "/private/tmp/claude-501/-Users-jsc-saichandu-github-stampede/1666b120-2e0e-4758-9f53-ad7d8abec5f2/scratchpad/research/gis/fixtures/noble-house.parcel.json",
+    "/private/tmp/claude-501/-Users-jsc-saichandu-github-stampede/1666b120-2e0e-4758-9f53-ad7d8abec5f2/scratchpad/research/gis/fixtures/noble-house.zoning.json",
+    "/private/tmp/claude-501/-Users-jsc-saichandu-github-stampede/1666b120-2e0e-4758-9f53-ad7d8abec5f2/scratchpad/research/gis/fixtures/mayfair-community-center.geocode.json",
+    "/private/tmp/claude-501/-Users-jsc-saichandu-github-stampede/1666b120-2e0e-4758-9f53-ad7d8abec5f2/scratchpad/research/gis/fixtures/mayfair-community-center.parcel.json",
+    "/private/tmp/claude-501/-Users-jsc-saichandu-github-stampede/1666b120-2e0e-4758-9f53-ad7d8abec5f2/scratchpad/research/gis/fixtures/mayfair-community-center.zoning.json",
+    "/private/tmp/claude-501/-Users-jsc-saichandu-github-stampede/1666b120-2e0e-4758-9f53-ad7d8abec5f2/scratchpad/research/gis/fixtures/berryessa-library.geocode.json",
+    "/private/tmp/claude-501/-Users-jsc-saichandu-github-stampede/1666b120-2e0e-4758-9f53-ad7d8abec5f2/scratchpad/research/gis/fixtures/berryessa-library.parcel.json",
+    "/private/tmp/claude-501/-Users-jsc-saichandu-github-stampede/1666b120-2e0e-4758-9f53-ad7d8abec5f2/scratchpad/research/gis/fixtures/berryessa-library.zoning.json",
+    "/private/tmp/claude-501/-Users-jsc-saichandu-github-stampede/1666b120-2e0e-4758-9f53-ad7d8abec5f2/scratchpad/research/gis/fixtures/fire-station-7.geocode.json",
+    "/private/tmp/claude-501/-Users-jsc-saichandu-github-stampede/1666b120-2e0e-4758-9f53-ad7d8abec5f2/scratchpad/research/gis/fixtures/fire-station-7.parcel.json",
+    "/private/tmp/claude-501/-Users-jsc-saichandu-github-stampede/1666b120-2e0e-4758-9f53-ad7d8abec5f2/scratchpad/research/gis/fixtures/fire-station-7.zoning.json"
+   ]
+  },
+  {
+   "lane": "durable-actors",
+   "summary": "Durable Actors 0.14.6 works, and the prototype ran end to end: bun 1.4.4, Node 24.15 clients, a separate caller and a separate subscriber. No servers are left running (lsof shows nothing on 7100 or 7200).\nPorts: control plane 127.0.0.1:7100, actor hosts ephemeral on 127.0.0.1 (from source, not observed), my test forwarder 0.0.0.0:7200.\nWorks: one actor per id, created on first call. State survived a dev server restart. The generated client runs in plain Node 24 with no node_modules and no Bun. Both @Emittable state frames and custom broadcasts reached a subscriber.\nFive things the plan must change or not assume:\n1. Bun 1.4.2+ is required for init, dev and generate. npx without Bun fails. apps/api can stay on Node.\n2. GET /api/permits/:id/events should become a grant endpoint. apps/api calls prepareWebsocket and returns websocketUrl, then the browser connects directly. There is no CORS, no browser client and no React hook.\n3. \"Clerk is the only status writer\" is not enforceable over RPC, because RPC carries no caller identity and TS private async methods are reachable over raw HTTP. It is enforceable with onMessage plus signed socket.metadata.role and DURABLE_ACTORS_SECRET, so the Clerk agent must write status over a WebSocket.\n4. dev binds loopback only and ignores DURABLE_ACTORS_CONTROL_PLANE_BIND, and the grant URL is always ws://127.0.0.1:7100. Two laptops or a phone need the forwarder plus a host rewrite, which I verified from the LAN IP on this Mac only.\n5. In-place mutation such as this.chat.push() neither persists nor emits. The README and examples/chat do this, so do not copy them.\nHosting: the only documented option is self-hosting on GKE, so plan to run the demo from one laptop.\nSide effect: dev downloaded a 58MB runtime to ~/.cache/durable-actors/0.14.6, outside scratch. It is still there. DURABLE_ACTORS_CACHE_DIR redirects it.",
+   "facts": [
+    {
+     "question": "Q1. Does the server need Bun, and what minimum version?",
+     "answer": "Yes. Bun 1.4.2+ is required. npm durable-actors 0.14.6 declares engines bun >=1.4.2. Local dev also runs actor hosts under bun (pgrep showed `bun --eval import(... durable-actors/host)`). A bun 1.4.4 binary installed only in a scratch folder and put on PATH worked for the whole flow, so no global install is needed.",
+     "source": "npm view durable-actors; README.md 'Install Bun 1.4.2+'; pgrep during dev",
+     "confidence": "observed"
+    },
+    {
+     "question": "Q1. Does the CLI work via npx or Node instead?",
+     "answer": "No. With bun off PATH, `npx durable-actors --version` printed `env: bun: No such file or directory`. The bin's shebang is `#!/usr/bin/env bun`. No Rust, Docker or Postgres is needed locally: a native runtime is downloaded on first dev.",
+     "source": "Ran npx with PATH stripped of bun; repo/sdk/bin/durable-actors.js:1; ~/.cache/durable-actors/0.14.6/darwin-arm64",
+     "confidence": "observed"
+    },
+    {
+     "question": "Do the plan's exact commands work?",
+     "answer": "Yes. `bunx durable-actors init stamp-actors`, `bun install` and `bunx durable-actors dev` all worked and reached Ready at http://127.0.0.1:7100. The plan's line is truncated at 'durable-acto', so I assumed the last word is dev. Package pinned at 0.14.6. dev took under 12s on first run, including the runtime download. No TLS or login is required.",
+     "source": "plan.txt:406; stamp-actors/dev.log",
+     "confidence": "observed"
+    },
+    {
+     "question": "Q2. How is an actor class defined?",
+     "answer": "`class X extends Actor<Metadata, Incoming, Outgoing>` in src/actors.ts. @Persisted saves on assignment. @Ephemeral is memory only. @Emittable (public @Persisted fields only) pushes changes to sockets. @Interleave allows other calls during an await. @Atomic gives all-or-nothing writes. Hooks are onConnect, onMessage, onDisconnect and onAlarm. this.broadcast(msg, {tags, except}), socket.send, socket.setTags. this.db is per-actor SQLite. this.id is the instance id.",
+     "source": "repo/docs/reference/typescript-guide.md; generated template stamp-actors/src/actors.ts",
+     "confidence": "documented"
+    },
+    {
+     "question": "Q2. What rules on methods and mutation did running it reveal?",
+     "answer": "Every method must be async, including TS private helpers. A sync `private applyStatus()` failed the build with `actor method PermitActor.applyStatus must be async`. In-place mutation neither persists nor emits: after this.chat.push(), read returned 2 messages, no state_update frame arrived, and only 1 message survived the restart. Reassign instead.",
+     "source": "stamp-actors/dev3.log; client/push.mjs followed by restart; typescript-guide.md 'Reassign objects and arrays'",
+     "confidence": "observed"
+    },
+    {
+     "question": "Q2. What other failure behaviour applies?",
+     "answer": "From the docs: a call holds the actor across await unless @Interleave is used, and using @Interleave anywhere removes rollback for the whole class. A throw leaves earlier writes saved unless the method is @Atomic. The guide also says a failed call normally rolls back, so the two statements disagree and I did not test which holds.",
+     "source": "repo/docs/reference/typescript-guide.md 'Interleaving calls' and 'Using SQLite'",
+     "confidence": "documented"
+    },
+    {
+     "question": "Q2. What happens when an actor fails to build?",
+     "answer": "At startup, the dev server exits ('Local actors exited without readiness information'). On a hot reload, the server stays up and keeps serving the previous code. The startup log also printed 'initializer is expression for property id/status/chat/deck/revision' next to the real error. The same fields then built fine, so those lines were not the blocker. Their cause is unverified.",
+     "source": "stamp-actors/dev3.log and dev4.log, run6.sh bad reload test",
+     "confidence": "observed"
+    },
+    {
+     "question": "Q3. How is one actor per id addressed?",
+     "answer": "`actors.PermitActor.get(id)`. It is created on first use: `permit-brand-new` returned default state with no create step. Ids must match ^[A-Za-z0-9._-]+$, so a UUID is fine. Grants for a socket also target an id.",
+     "source": "Ran read on a new id; repo/sdk/src/actor/identity.ts",
+     "confidence": "observed"
+    },
+    {
+     "question": "Q4. How does a separate Node or Hono API process call an actor?",
+     "answer": "With a generated client, not a separate npm client package at runtime. Run `bunx durable-actors generate` to create generated/index.js with its own generated/runtime, then `actors.PermitActor.get(id).method()`. A copy of generated/ with no node_modules and no Bun on PATH worked under plain Node 24.15. Generation fetches the contract from the running server. Generating from a source file (`generate src/actors.ts --out-dir ...`) is documented but I did not run it. Hono was not tested; the client uses plain fetch.",
+     "source": "client/call.mjs; research/actors/standalone/t.mjs; repo/docs/reference/cli.md",
+     "confidence": "observed"
+    },
+    {
+     "question": "Q4. What are the URL and auth for a backend call?",
+     "answer": "Env vars: DURABLE_ACTORS_CONTROL_PLANE_URL (default http://127.0.0.1:7100), DURABLE_ACTORS_PROJECT_ID (default `local` only on localhost, required for any other host), DURABLE_ACTORS_SECRET. Raw call: POST /v1/projects/local/actors/PermitActor/{id}/invoke with body {requestId, method, args} and `Authorization: Bearer <secret>`. No secret by default, so anyone reaching the port can call anything. With a secret, no key or a wrong key returned 401. Set the same secret on server and backend.",
+     "source": "curl runs in run4.sh; generated/runtime/settings.js; repo/docs/reference/configuration.md",
+     "confidence": "observed"
+    },
+    {
+     "question": "Q5. How does a browser get a live subscription?",
+     "answer": "The backend calls `actors.PermitActor.prepareWebsocket({ actorId, metadata })` and returns {websocketUrl, homeRegion, connectByMs}. The browser opens a plain `new WebSocket(websocketUrl)` with the JWT in ?key=. Grant shape observed: ws://127.0.0.1:7100/v1/socket?key=<JWT>. It is valid about 60s for connecting (JWT exp-iat 61). An accepted socket stays open after that. Each reconnect needs a fresh grant.",
+     "source": "client/subscribe.mjs output; client/roles.mjs 'ttl 61'; typescript-guide.md",
+     "confidence": "observed"
+    },
+    {
+     "question": "Q5. Can the web app subscribe directly, or must we proxy?",
+     "answer": "Direct WebSocket, proxied grant. Do not proxy the frames, but apps/api must mint the grant. The browser cannot do that itself: the browser build throws 'actors must be used on the server'; OPTIONS on invoke returned 405 with no CORS headers; grep for CORS in the Rust source found nothing. The WebSocket upgrade with `Origin: http://evil.test` returned 101, so the JWT is the only gate. An actual browser was not tested; I used Node's WebSocket and curl.",
+     "source": "repo/sdk/src/client-runtime/index.browser.ts; curl OPTIONS and upgrade in run4.sh; examples/chat/src/backend.ts",
+     "confidence": "observed"
+    },
+    {
+     "question": "Q5. Is there a client library or React hook?",
+     "answer": "None found. grep of sdk/package.json and client-runtime found no hook. The README uses raw useEffect plus WebSocket. Frames: {type:'state',state,version} on connect, including for late joiners, then {type:'state_update',changes,removed,version}, plus custom broadcasts. A changes entry holds the whole field (the full chat array each time). A broadcast arrived before that call's state_update, so render from state, not from events.",
+     "source": "client/subscribe.mjs output; grep of repo/sdk",
+     "confidence": "observed"
+    },
+    {
+     "question": "Q6. Can the actor identify an RPC caller?",
+     "answer": "No. There is no caller in the method context. The whole project shares one secret. A self-declared argument such as setStatus('clerk', ...) was satisfied by an unauthenticated curl (result approved, 200) on the no-secret default. TS `private` does not protect either: a `private async hiddenProbe()` returned 200 over raw invoke, though it did not appear in generated/types.d.ts.",
+     "source": "curl in the verification step and run4.sh; grep of generated/types.d.ts",
+     "confidence": "observed"
+    },
+    {
+     "question": "Q6. How can 'only Clerk writes status' be enforced?",
+     "answer": "Through socket metadata. The backend signs metadata into the grant JWT, and the actor reads socket.metadata.role in onMessage. Results: viewer socket sent setStatus and got {type:'denied'}, status unchanged. Clerk socket succeeded. A tampered JWT claiming clerk was rejected (close 1006). onMessage over RPC returned 'actor method PermitActor.onMessage was not found'. Clerk's role still worked after 12s idle. Limit: anything holding DURABLE_ACTORS_SECRET can mint a clerk grant, so the guarantee really is 'apps/api never mints role:clerk for browsers'. Without a secret, any local process can mint one. The JWT payload is readable, so do not put secrets in metadata. Grant metadata is not validated at issue: {wrong:1} was granted. Whether the connection then fails is unverified.",
+     "source": "client/roles.mjs, client/forge.mjs, run4.sh, run6.sh",
+     "confidence": "observed"
+    },
+    {
+     "question": "Q7. Does state survive restarting the dev server?",
+     "answer": "Yes. After SIGTERM and a new `bunx durable-actors dev`, read returned chat, deck, revision and status unchanged. State lives in <project>/.durable-actors as snapshots (objects/.../snapshots/.../N.json) plus SQLite. `dev` also wrote a .gitignore there. Quirk: after restart, `inspect` with no selector said 'No actor instances', but `inspect PermitActor/permit-001` showed it live. So do not rely on the list form.",
+     "source": "Restart test; stamp-actors/.durable-actors listing",
+     "confidence": "observed"
+    },
+    {
+     "question": "Do sockets survive hot reload, idle and restart?",
+     "answer": "A socket opened before a hot reload still received a later broadcast. A socket idle for 12s still delivered. The default idle timeout is 10s, but I did not confirm eviction actually happened in that window. Docs say open sockets stay at the gateway while the actor sleeps. Socket behaviour across a full dev server restart was not tested. Expect it to drop and need a new grant, so build reconnect.",
+     "source": "client/sub2.log; client/roles.mjs; repo/docs/reference/configuration.md",
+     "confidence": "inferred"
+    },
+    {
+     "question": "Q8. Is there a hosted option?",
+     "answer": "The only documented path is self-hosting on GKE with Helm, Postgres and GCS ('Google Cloud is the supported hosting platform'). `start` requires an https DURABLE_ACTORS_PUBLIC_URL. A public hosted signup is unverified: useterse.ai has a 'hosted-install' string and config docs mention 'hosted control planes', but I found no self-serve route. Treat it as local-only for today, or ask the Terse sponsor table.",
+     "source": "repo/docs/self-hosting.md:13; src/control_plane/process.rs:736-746; curl of useterse.ai",
+     "confidence": "documented"
+    },
+    {
+     "question": "Q8. Can a second machine or phone reach it?",
+     "answer": "Not directly. dev bound 127.0.0.1:7100 even with DURABLE_ACTORS_CONTROL_PLANE_BIND=0.0.0.0:7100 set (lsof), and the LAN IP call failed to connect. --port is documented as 'Localhost port'. A 3-line Node TCP forwarder on 0.0.0.0:7200 worked from the LAN IP for both RPC and WebSocket. It needs DURABLE_ACTORS_PROJECT_ID=local on the client. The returned websocketUrl still said ws://127.0.0.1:7100 even when called through the LAN address, so its host must be rewritten. Tested from this Mac to its own LAN IP only. A real second device, the macOS firewall, venue Wi-Fi client isolation and wss from an https page are unverified.",
+     "source": "lsof and client/lan.mjs in run4.sh and run5.sh; repo/docs/reference/cli.md",
+     "confidence": "observed"
+    },
+    {
+     "question": "Q9. Did the prototype work, and what failed along the way?",
+     "answer": "Yes. The final actors.ts with call.mjs and subscribe.mjs ran as separate Node 24 processes, and the subscriber showed the broadcasts and state updates. Failures along the way: the sync private method build error; .push losing data on restart; the bind env var being ignored; npx without Bun failing. Two more failures were my own shell mistakes and not product issues: an unset $S and a JWT parse that split on the dots in 127.0.0.1.",
+     "source": "run6.sh output; client/sub3.log",
+     "confidence": "observed"
+    },
+    {
+     "question": "Side effects and cleanup",
+     "answer": "No writes to the repo. dev downloaded about 58MB to ~/.cache/durable-actors/0.14.6, outside scratch, and it remains there. DURABLE_ACTORS_CACHE_DIR redirects it. All servers are stopped: pgrep is empty and lsof shows 0 listeners on 7100 and 7200.",
+     "source": "du ~/.cache/durable-actors; pgrep; lsof",
+     "confidence": "observed"
+    }
+   ],
+   "planImpact": [
+    "Setup section: both teammates must have Bun 1.4.2+ for init, dev and generate. npx will not work without it. A non-global bun on PATH is fine. apps/api and apps/web can stay on Node.",
+    "Minimum API: replace `GET /api/permits/:id/events` (WebSocket/SSE) with `POST /api/permits/:id/socket`, which calls prepareWebsocket and returns websocketUrl with Cache-Control: no-store. The browser then connects directly to the actor server. No frame proxy is needed. SSE is unnecessary.",
+    "Saichandu's web screen: no React hook exists, so write a small hook that fetches a grant, merges `state` and `state_update` (including `removed`), renders from state rather than custom events, and fetches a new grant on every reconnect because grants last about 60s.",
+    "Sponsor table and agents table say Clerk is the only status writer. This is not enforceable through RPC. Either implement status writes over a Clerk WebSocket using onMessage and signed metadata role, as prototyped, or say it is a convention. Do not expose a public setStatus method and claim enforcement. The Clerk agent must open a WebSocket from Node to move status.",
+    "Set DURABLE_ACTORS_SECRET on the actor server and apps/api. Without it, anyone reaching the port can call any method or mint a clerk grant. apps/api must hard-code browser grants to a viewer or applicant role. Keep the secret out of apps/web.",
+    "Do not assume TS `private` hides a method: private async methods are callable over raw HTTP with the secret. Every method must be async, including helpers. Inline helpers or move them to module functions.",
+    "Kris's PermitActor must reassign, never mutate: `this.chat = [...this.chat, m]`. Do not copy this.messages.push() from README.md or examples/chat; it is not persisted and not emitted.",
+    "Keep OpenAI and Relay calls out of actor methods, because a call holds the actor across await and @Interleave removes rollback for the whole class. Plan the actor as a record that apps/api and agents write to after their LLM work finishes. Mark multi-field writes @Atomic.",
+    "services/actors must generate its client into apps/api and regenerate after every method change. Commit generated/, or add a script. The running server's contract is the tested path; generating from source is documented but I did not run it. The generated folder needs no durable-actors dependency at runtime under Node.",
+    "Two laptops: dev is loopback only. Either run everything on one laptop for the demo (recommended), or run the forwarder and point the second machine at it with CONTROL_PLANE_URL, DURABLE_ACTORS_PROJECT_ID=local and a websocketUrl host rewrite. Do not plan on a bind env var. Test on the venue network early, as a real second device is unverified.",
+    "Hosted deployment: do not assume a hosted Durable Actors endpoint. GKE self-hosting is not realistic before 16:00. If judges need a phone view, that requires the forwarder or a tunnel plus a host rewrite in the grant, and wss through a tunnel is unverified.",
+    "Actor ids must match ^[A-Za-z0-9._-]+$. A UUID works. POST /api/permits does not need a create call on the actor: the first method call creates it. If existence checks matter, add a field to tell apart a real permit from defaults, because any id returns default state.",
+    "Revision freeze from the plan is not provided by the framework and was not prototyped. Store frozen revisions in a persisted field or this.db. Updated emittable fields send the whole field, so keep large findings or history in compact fields or SQLite.",
+    "Add .durable-actors/ to the repo's .gitignore, and keep it between runs: it is the demo's state. Do not wipe it before the demo unless reseeding."
+   ],
+   "codeSnippets": [
+    {
+     "title": "Generated template, verbatim",
+     "code": "import { Actor, Persisted } from \"durable-actors\"\n\nexport class Counter extends Actor {\n    @Persisted private value = 0\n\n    async read() {\n        return this.value\n    }\n\n    async increment() {\n        return ++this.value\n    }\n}",
+     "source": "Generated by `bunx durable-actors init stamp-actors`, src/actors.ts"
+    },
+    {
+     "title": "Official grant route, verbatim",
+     "code": "app.post(\"/api/chat/socket\", async (_req, res) => {\n    const grant = await actors.ChatHistory.prepareWebsocket({\n        actorId: \"lobby\",\n        metadata: null\n    })\n    res.set(\"Cache-Control\", \"no-store\").json(grant)\n})",
+     "source": "repo/README.md, section 3. Connect your backend"
+    },
+    {
+     "title": "Official emittable subscriber, verbatim",
+     "code": "const { websocketUrl } = await actors.BankAccount.prepareWebsocket({ actorId: \"demo\", metadata: { userId: \"ada\" } })\nconst socket = new WebSocket(websocketUrl)\nsocket.addEventListener(\"message\", event => {\n    const message = JSON.parse(event.data)\n    if (message.type === \"state\") console.log(message.state.balance)\n    else if (message.type === \"state_update\") console.log(message.changes.balance)\n    else console.log(message)\n})",
+     "source": "repo/docs/reference/typescript-guide.md, Emitting state"
+    },
+    {
+     "title": "Working PermitActor (ran), final version",
+     "code": "import { Actor, type ActorSocket, Emittable, Persisted } from \"durable-actors\"\n\nexport type Role = \"applicant\" | \"building\" | \"zoning\" | \"clerk\" | \"viewer\"\nexport type Status = \"draft\" | \"submitted\" | \"in_review\" | \"corrections\" | \"approved\"\nexport type ChatMessage = { role: \"user\" | \"assistant\"; content: string; at: number }\nexport type Deck = Record<string, string | number | boolean | null>\n\ntype Metadata = { role: Role }\ntype Incoming = { type: \"setStatus\"; status: Status }\ntype Outgoing = { type: \"event\"; event: string; revision: number } | { type: \"denied\"; reason: string }\ntype Socket = ActorSocket<Metadata, Outgoing>\n\nexport class PermitActor extends Actor<Metadata, Incoming, Outgoing> {\n    @Persisted @Emittable status: Status = \"draft\"\n    @Persisted @Emittable chat: ChatMessage[] = []\n    @Persisted @Emittable deck: Deck = {}\n    @Persisted @Emittable revision = 0\n\n    async read() {\n        return { id: this.id, status: this.status, chat: this.chat, deck: this.deck, revision: this.revision }\n    }\n\n    async appendChat(message: ChatMessage): Promise<number> {\n        // Reassign: this.chat.push() is NOT persisted.\n        this.chat = [...this.chat, message]\n        this.broadcast({ type: \"event\", event: \"chat\", revision: this.revision })\n        return this.chat.length\n    }\n\n    async patchDeck(patch: Deck): Promise<number> {\n        this.deck = { ...this.deck, ...patch }\n        this.revision += 1\n        this.broadcast({ type: \"event\", event: \"deck\", revision: this.revision })\n        return this.revision\n    }\n\n    // Status has no public RPC. socket.metadata is signed into the grant by the backend.\n    async onMessage(socket: Socket, message: Incoming): Promise<void> {\n        if (socket.metadata.role !== \"clerk\") {\n            socket.send({ type: \"denied\", reason: \"only clerk writes status\" })\n            return\n        }\n        this.status = message.status\n        this.broadcast({ type: \"event\", event: \"status\", revision: this.revision })\n    }\n}",
+     "source": "research/actors/stamp-actors/src/actors.ts, ran in run6.sh"
+    },
+    {
+     "title": "call.mjs: plain Node 24 caller (ran)",
+     "code": "// Plain Node 24, separate process. Env: DURABLE_ACTORS_SECRET (and CONTROL_PLANE_URL if not local).\nimport { actors } from \"./generated/index.js\"\nconst permit = actors.PermitActor.get(process.argv[2])\nconsole.log(\"appendChat\", await permit.appendChat({ role: \"user\", content: \"12x16 deck\", at: Date.now() }))\nconsole.log(\"patchDeck\", await permit.patchDeck({ width: 12, depth: 16 }))\nconsole.log(\"read\", JSON.stringify(await permit.read()))",
+     "source": "research/actors/client/call.mjs, ran in run6.sh"
+    },
+    {
+     "title": "subscribe.mjs: plain Node 24 subscriber (ran), with state merge",
+     "code": "// Plain Node 24, global WebSocket. Keep state locally from `state` + `state_update`.\nimport { actors } from \"./generated/index.js\"\nconst { websocketUrl } = await actors.PermitActor.prepareWebsocket({ actorId: process.argv[2], metadata: { role: \"viewer\" } })\nlet state = {}\nconst socket = new WebSocket(websocketUrl)\nsocket.addEventListener(\"message\", e => {\n    const m = JSON.parse(e.data)\n    if (m.type === \"state\") state = m.state\n    else if (m.type === \"state_update\") {\n        state = { ...state, ...m.changes }\n        for (const key of m.removed) delete state[key]\n    } else return console.log(\"broadcast\", e.data)\n    console.log(\"state\", JSON.stringify(state))\n})\nsetTimeout(() => socket.close(), 3000)\n\n// Observed output:\n// state {\"chat\":[],\"deck\":{},\"revision\":0,\"status\":\"draft\"}\n// broadcast {\"type\":\"event\",\"event\":\"chat\",\"revision\":0}\n// state {\"chat\":[{\"at\":1793473977463,\"content\":\"12x16 deck\",\"role\":\"user\"}],\"deck\":{},\"revision\":0,\"status\":\"draft\"}\n// broadcast {\"type\":\"event\",\"event\":\"deck\",\"revision\":1}\n// state {\"chat\":[{\"at\":1793473977463,\"content\":\"12x16 deck\",\"role\":\"user\"}],\"deck\":{\"depth\":16,\"width\":12},\"revision\":1,\"status\":\"draft\"}",
+     "source": "research/actors/client/subscribe.mjs, output in client/sub3.log"
+    },
+    {
+     "title": "roles.mjs: Clerk status write over a signed socket (ran)",
+     "code": "import { actors } from \"./generated/index.js\"\nconst open = async role => {\n  const { websocketUrl } = await actors.PermitActor.prepareWebsocket({ actorId: \"permit-roles\", metadata: { role } })\n  const ws = new WebSocket(websocketUrl)\n  ws.addEventListener(\"message\", e => console.log(role, \"<-\", e.data))\n  await new Promise(r => ws.addEventListener(\"open\", r))\n  return { ws, websocketUrl }\n}\nconst wait = ms => new Promise(r => setTimeout(r, ms))\nconst viewer = await open(\"viewer\"); const clerk = await open(\"clerk\")\nawait wait(300)\nviewer.ws.send(JSON.stringify({ type: \"setStatus\", status: \"approved\" })); await wait(400)\nclerk.ws.send(JSON.stringify({ type: \"setStatus\", status: \"submitted\" })); await wait(400)\nconsole.log(\"final\", (await actors.PermitActor.get(\"permit-roles\").read()).status)\n\n// Observed: viewer <- {\"type\":\"denied\",\"reason\":\"only clerk writes status\"}\n// Observed in the first run, before this file's extended idle test: final submitted",
+     "source": "research/actors/client/roles.mjs (the idle-test lines are omitted here)"
+    },
+    {
+     "title": "forward.mjs: exposes the loopback dev server on the LAN (ran)",
+     "code": "// Node stdlib TCP forwarder: exposes the loopback-only dev server on the LAN.\nimport net from \"node:net\"\nnet.createServer(c => { const u = net.connect(7100, \"127.0.0.1\"); c.pipe(u).pipe(c); c.on(\"error\", () => u.destroy()); u.on(\"error\", () => c.destroy()) }).listen(7200, \"0.0.0.0\")\n\n// Client env: DURABLE_ACTORS_CONTROL_PLANE_URL=http://<LAN-IP>:7200 DURABLE_ACTORS_PROJECT_ID=local\n// The grant still says 127.0.0.1:7100, so rewrite it:\n// const url = grant.websocketUrl.replace(\"127.0.0.1:7100\", \"<LAN-IP>:7200\")",
+     "source": "research/actors/client/forward.mjs and client/lan.mjs, ran in run5.sh"
+    }
+   ],
+   "artifacts": [
+    "/private/tmp/claude-501/-Users-jsc-saichandu-github-stampede/1666b120-2e0e-4758-9f53-ad7d8abec5f2/scratchpad/research/actors/stamp-actors/src/actors.ts",
+    "/private/tmp/claude-501/-Users-jsc-saichandu-github-stampede/1666b120-2e0e-4758-9f53-ad7d8abec5f2/scratchpad/research/actors/client/call.mjs",
+    "/private/tmp/claude-501/-Users-jsc-saichandu-github-stampede/1666b120-2e0e-4758-9f53-ad7d8abec5f2/scratchpad/research/actors/client/subscribe.mjs",
+    "/private/tmp/claude-501/-Users-jsc-saichandu-github-stampede/1666b120-2e0e-4758-9f53-ad7d8abec5f2/scratchpad/research/actors/client/roles.mjs",
+    "/private/tmp/claude-501/-Users-jsc-saichandu-github-stampede/1666b120-2e0e-4758-9f53-ad7d8abec5f2/scratchpad/research/actors/client/forge.mjs",
+    "/private/tmp/claude-501/-Users-jsc-saichandu-github-stampede/1666b120-2e0e-4758-9f53-ad7d8abec5f2/scratchpad/research/actors/client/forward.mjs",
+    "/private/tmp/claude-501/-Users-jsc-saichandu-github-stampede/1666b120-2e0e-4758-9f53-ad7d8abec5f2/scratchpad/research/actors/client/lan.mjs",
+    "/private/tmp/claude-501/-Users-jsc-saichandu-github-stampede/1666b120-2e0e-4758-9f53-ad7d8abec5f2/scratchpad/research/actors/stamp-actors/dev3.log"
+   ]
+  },
+  {
+   "lane": "agent-relay",
+   "summary": "Pin @agent-relay/sdk@15.0.1. It needs Node 22+ and pulls in @relaycast/sdk 8.16.0. Do not use @next: the next tag is older than latest. The rendered docs page /docs/typescript-sdk still describes v7.1.1 (broker and spawnAgent), so ignore it; the .d.ts files and README in the package are correct.\nJoin with new AgentRelay({ workspaceKey, baseUrl }). The SDK does not read RELAY_WORKSPACE_KEY or RELAY_BASE_URL from the environment, so pass both yourself.\nBiggest risk: on a machine without the desktop app, the CLI's init --hosted creates the workspace on armadillo.agentrelay.com, but the SDK defaults to cast.agentrelay.com. Set the baseUrl to match the key, or make a separate product workspace with createWorkspace on cast.\nregister() is create-only and returns the token once. Register once, save the tokens in env, and call workspace.reconnect({apiToken}) on every boot. One process can hold several identities.\nChannels: agent.channels.create, join, invite. Post with agent.sendMessage({to:'#permit-x', text, metadata, idempotencyKey}). Receive with relay.addListener('message.created', ...) over a WebSocket opened per agent (/v1/node/ws).\nMetadata is a JSON object. Round-trip through delivery is unverified, so also put the envelope in text.\nDelivery is at-least-once. Send success means enqueued only. No rate-limit numbers are published.\nA dead host fails with RelayError transport_error after about 5-7 s. There is no fetch timeout.\nNothing was run against live Relay: types check, and unreachable behaviour was tested on a closed local port.",
+   "facts": [
+    {
+     "question": "Q1. How do you create a workspace?",
+     "answer": "`static createWorkspace(input: string | AgentRelayCreateWorkspaceInput): Promise<AgentRelay>`, then read `relay.workspaceKey`. `interface AgentRelayCreateWorkspaceInput extends RelaycastTelemetryOptions { name: string; baseUrl?: string; retryPolicy?; actions? }`. REST `POST /workspaces` has auth 'none', is idempotent by name, and returns the key on first creation only, so a repeat call with the same name cannot recover the key. Not run, as instructed.",
+     "source": "pkg/package/dist/agent-relay.d.ts; docs/relaycast-api.md:58",
+     "confidence": "observed"
+    },
+    {
+     "question": "Q1. How do you join a workspace?",
+     "answer": "`new AgentRelay({ workspaceKey: process.env.RELAY_WORKSPACE_KEY!, baseUrl? })`. `constructor(options?: AgentRelayOptions)`. No RELAY_WORKSPACE_KEY or RELAY_BASE_URL reads exist in the SDK's or @relaycast/sdk's dist JS, so the env var is only a convention and must be passed explicitly.",
+     "source": "grep over pkg/package/dist and rcx/package/dist; agent-relay.js:21-27",
+     "confidence": "observed"
+    },
+    {
+     "question": "Q1. Does hosted setup need an account or payment?",
+     "answer": "The API lists POST /workspaces with no auth. The docs say the CLI is free and open source and that the desktop app is the paid upgrade. No docs page states any account, payment or quota requirement for hosted workspaces made through the SDK or init --hosted. Solo init explicitly says no account is required. Actual behaviour of hosted creation without sign-in was not tested.",
+     "source": "docs/relaycast-api.md:58; docs/gs.md; docs/full.txt:1142,1152",
+     "confidence": "unverified"
+    },
+    {
+     "question": "Q1. Which server does a key belong to?",
+     "answer": "SDK default baseUrl is `https://cast.agentrelay.com`. Without the desktop app, `init --hosted` creates workspaces on `https://armadillo.agentrelay.com` with `ar_ws_*` keys. With the desktop app installed it uses cast, and armadillo keys are refused on that machine. API doc: hosted `rk_*` keys stay on cast. The SDK adds `/v1/...` itself, so baseUrl must have no /v1 suffix. Whether @relaycast/sdk 8.16 works end to end against armadillo is unverified.",
+     "source": "rcx/package/dist/client.js:91; docs/full.txt:1238-1240; docs/relaycast-api.md:12-18; rcx/package/dist/agent.js send path",
+     "confidence": "observed"
+    },
+    {
+     "question": "Q2. How does a long-running process register an identity?",
+     "answer": "`relay.workspace.register<T extends AgentLike | AgentLike[]>(agents: T, options?: RelayRegisterOptions): Promise<T extends AgentLike[] ? RelayAgentClient[] : RelayAgentClient>` and `reconnect(input: { apiToken: string }): Promise<RelayAgentClient>`. Registration is create-only: an existing name is rejected with `name_conflict` (HTTP 409) with or without strict, and the token is returned once. The returned client exposes `.token`. Recovery of a lost token: `relay agent rotate <name>` or POST /agents/{name}/rotate-token.",
+     "source": "pkg/package/dist/facade.d.ts (RelayWorkspace, RelayRegisterOptions); docs/relaycast-api.md:72-76",
+     "confidence": "observed"
+    },
+    {
+     "question": "Q2. Can one process hold several identities?",
+     "answer": "Yes. register accepts an array, and each token gets its own client through clientsByToken. Each client is added as a source to one workspace-level fan-in, so relay.addListener sees all of them, and cross-source copies of one event are collapsed. A handler is not told which local identity received the event, so route on envelope content.",
+     "source": "pkg/package/dist/agent-relay.js:258-268; messaging/event-fanin.js:105-124; messaging/event-fanin.d.ts",
+     "confidence": "observed"
+    },
+    {
+     "question": "Q3. How do you create and join a channel, and post?",
+     "answer": "`channels.create(input: RelayCreateChannelInput): Promise<RelayChannel>` with `{ name; topic?; metadata? }`, `join(name: string): Promise<void>`, `invite(channel: string, agent: string): Promise<void>`. Post: `sendMessage(input: RelaySendMessageInput): Promise<RelayMessage>` with `{ to: string | string[]; from?; text?; msg?; mentions?; mode?; attachments?; blocks?; idempotencyKey?; metadata?: Record<string, unknown> | null }`. `to` is '#channel', '@handle' or an array for group DM. Sends require an agent client; the workspace-key client has none. CreateChannelRequestSchema on the client accepts any string; server-side name rules and the error code for a duplicate channel are unverified.",
+     "source": "pkg/package/dist/facade.d.ts; messaging/types.d.ts; rtx/package/dist/channel.js:28",
+     "confidence": "observed"
+    },
+    {
+     "question": "Q3. How do you receive messages?",
+     "answer": "Callback over WebSocket. `relay.addListener<K extends keyof RelayEventMap>(selector: K, handler: ListenerHandler<RelayEventMap[K]>): () => void`. Calling it opens the stream lazily. The socket is per agent at `/v1/node/ws`. A workspace key alone cannot receive, so at least one agent must be registered or reconnected. Polling exists too: `channels` messages via `messages.list(channel, { limit?, before?, after? })`, plus durable `inbox.list` and `inbox.subscribe`. Outbound webhooks exist via POST /subscriptions.",
+     "source": "pkg/package/dist/listeners.js:372-388; messaging/event-fanin.d.ts; rcx/package/dist/agent.js:153-165; docs/relaycast-api.md",
+     "confidence": "observed"
+    },
+    {
+     "question": "Q3. What does a received message look like?",
+     "answer": "Handler receives `{ type: 'message.created', message: RelayMessage, envelope: RelayEventEnvelope }`. RelayMessage: `{ id, messageId, kind?, text, from: { id?, name? }, target?, channel?: { id?, name? }, conversationId?, threadId?, parentId?, mode?, createdAt?, updatedAt?, metadata?, blocks?, attachments?, replyCount?, reactions?, readByCount?, mentions? }`. RelayEventEnvelope: `{ from?, to?, channel?, parent? }`. Thread replies arrive as a separate 'thread.reply' event, so do not reply in threads if listening only to message.created.",
+     "source": "pkg/package/dist/messaging/types.d.ts:218; listeners.d.ts",
+     "confidence": "observed"
+    },
+    {
+     "question": "Q4. Are payloads text only?",
+     "answer": "No. Send accepts `metadata: Record<string, unknown> | null`, sent as wire `data`, and normalize maps it back to `message.metadata`. `text` is still required on the wire. Limits on metadata size are unpublished. Reads via REST normalization are confirmed in code. Survival through the node-ws deliver transform was not exercised, so put the envelope in both metadata and text. `message.reaction`-style attachments and blocks exist but are not needed.",
+     "source": "rtx/package/dist/message.js:84; rcx/package/dist/agent.js:362-371; pkg/package/dist/messaging/normalize.js:15-17,139-141",
+     "confidence": "observed"
+    },
+    {
+     "question": "Q5. Minimum applicant code against the real types?",
+     "answer": "Written to relay-applicant.ts and register-once.ts. Both pass tsc --strict against @agent-relay/sdk@15.0.1 with @relaycast/sdk@8.16.0. Neither was run against a live workspace.",
+     "source": "tsc run in research/relay/tc: tsc_exit=0, reg_tsc=0",
+     "confidence": "observed"
+    },
+    {
+     "question": "Q6. Delivery guarantees and duplicates?",
+     "answer": "Node delivery is at-least-once; the source comment says so. Frames carry per-agent seq and the SDK auto-acks them (`autoAckDeliveries: true`). The client dedupes redelivered events by `type:id` in memory, which resets on restart. A successful send confirms enqueue only; read receipts confirm consumption. Reconnecting nodes replay unacked work, per the API doc. App-level dedupe is still needed.",
+     "source": "rcx/package/dist/ws.js:344-362,386-398; rcx/package/dist/agent.js:162; messaging/types.d.ts RelayMessageMode comment; docs/relaycast-api.md WebSockets section",
+     "confidence": "observed"
+    },
+    {
+     "question": "Q6. Ordering?",
+     "answer": "The stream has a monotonic per-agent `agent_seq`, and inbox.list replays in FIFO order. There is no documented cross-sender or per-channel ordering guarantee, so use revision numbers, not arrival order.",
+     "source": "rcx/package/dist/ws.js:164; pkg/package/dist/messaging/relaycast.d.ts inbox.list comment",
+     "confidence": "observed"
+    },
+    {
+     "question": "Q6. Rate limits?",
+     "answer": "No numbers appear in the docs or README. The client recognises 429 and `rate_limited`, honours Retry-After capped at 60 s, and retries by default on 429, 500, 502, 503, 504 with maxRetries 3, backoff 1 s, multiplier 2. A `backpressure` code also exists.",
+     "source": "rcx/package/dist/client.js:26-32,202-203; rcx/package/dist/errors.js:6,26,35; grep of docs/full.txt returned no limit values",
+     "confidence": "unverified"
+    },
+    {
+     "question": "Q6. Version stability, and is @next needed?",
+     "answer": "@next is not needed for the SDK or for the CLI's sake of version: dist-tags for both @agent-relay/sdk and agent-relay are latest 15.0.1 and next 15.0.1-next.0, so next is older. The docs still print `agent-relay@next` for the CLI, and following them is harmless. 15.0.0 was published 2026-10-31T14:46Z and 15.0.1 at 17:19Z, today, with next releases several times a day, so churn is high. Pin exactly. The first 25 open GitHub issues show broker, CLI and PTY items, none about the SDK's channel send path; issue #1991/#1987 concerns DM readback only.",
+     "source": "npm view @agent-relay/sdk --json; npm view agent-relay dist-tags; api.github.com/repos/AgentWorkforce/relay/issues and releases",
+     "confidence": "observed"
+    },
+    {
+     "question": "Q6. Runtime requirements and health?",
+     "answer": "engines node >=22.0.0. Local Node is v24.15.0. cast.agentrelay.com/health returned 200 at the time of research. Behaviour under Bun, which Durable Actors uses, is untested.",
+     "source": "pkg/package/package.json; node -v; curl https://cast.agentrelay.com/health",
+     "confidence": "observed"
+    },
+    {
+     "question": "Q7. What happens to a post when Relay is unreachable?",
+     "answer": "The promise rejects with `RelayError`, code `transport_error`, retryable true, message 'Network request failed: fetch failed'. Against a closed local port: register failed in 9 ms, reconnect in 7129 ms, send with no key in 4686 ms, send with a key in 6922 ms. Nothing is queued locally for later delivery. Every send carries an Idempotency-Key, auto-generated if absent, so sends are always retried.",
+     "source": "node research/relay/unreach.mjs against http://127.0.0.1:9; rcx/package/dist/agent.js:22-30",
+     "confidence": "observed"
+    },
+    {
+     "question": "Q7. What about a hung host or a dropped socket?",
+     "answer": "client.js passes no AbortSignal or timeout to fetch, so a black-holed host waits on Node's own limits; wrap sends in a timeout. A Promise.race timeout does not cancel the in-flight retry, so a post reported as failed can still land later. WebSocket reconnect uses 1 s to 30 s backoff, and a circuit breaker at 30 attempts stops it permanently, surfaced as a `permanentlyDisconnected` event on the events surface. After that no messages arrive until reconnect or restart. onError or a console warning reports listener errors.",
+     "source": "rcx/package/dist/client.js:187-192; rcx/package/dist/ws.js:74-82,556-575; messaging/types.d.ts RelayReconnectEvent",
+     "confidence": "observed"
+    }
+   ],
+   "planImpact": [
+    "Plan section 9, 12:15 step and setup block: `init --hosted` keys are not enough on their own. If the key starts with ar_ws_, set RELAY_BASE_URL=https://armadillo.agentrelay.com with no /v1 and pass it as baseUrl. If it starts with rk_live_, use the cast default. Whether 8.16 works against armadillo is unverified, so the first hello-world must test this path.",
+    "Option if armadillo fails: make a separate product workspace once with AgentRelay.createWorkspace('stamp-product') on cast and share that rk_live_ key. This differs from the plan's single 'both join' workspace; the coding-session workspace stays separate. It costs one short script and also keeps product names from colliding with coding-session agents.",
+    "Add a one-time step: register intake, clerk, building and zoning once with register-once.ts, then store RELAY_INTAKE_TOKEN, RELAY_CLERK_TOKEN and so on in a shared secret. Servers call workspace.reconnect on every boot. Calling register on boot will fail with name_conflict on the first restart, including during the demo.",
+    "Only one person runs the register script, or each registers only their own names. Tokens are returned once.",
+    "Do not copy from agentrelay.com/docs/typescript-sdk. It shows v7.1.1 (spawnAgent, broker, relaycastBaseUrl), which is not the installed API. The plan's references list should point at the README and .d.ts in node_modules/@agent-relay/sdk instead. spec.txt line 306 is correct on createWorkspace and RELAY_WORKSPACE_KEY, but the key must be passed explicitly.",
+    "Pin exact `@agent-relay/sdk@15.0.1` in package.json. Do not use @next for the SDK. `npm install @agent-relay/sdk zod openai` in the plan needs the version added. zod ^4.4.3 is a dependency, so the shared schemas should use zod 4.",
+    "Decide channel ownership with Kris now. Recommendation: Intake creates permit-<id> and invites clerk, building and zoning inside POST /api/permits/:id/review, then posts REVIEW_REQUEST. Clerk cannot learn about a new channel any other way unless it is invited. All three must be registered first. An advisor suggested Clerk own creation; I kept Intake because Intake sends the first message. If Kris prefers the Clerk to own it, the API must call Clerk directly first.",
+    "The office-side listener must have a connected registered agent, and each agent receives only channels it belongs to. Whether an invited agent receives messages immediately without an explicit join is unverified, so test invite in the hello-world, and have clerk, building and zoning call join on invite if it does not.",
+    "Do not use thread replies for envelopes unless the listener also handles 'thread.reply'. Plan on top-level channel posts only.",
+    "Add to the envelope contract: the envelope travels in metadata and also as JSON.stringify(envelope) in text. Receivers read metadata, then fall back to JSON.parse(text). Fix the deterministic idempotency key: permitId:revision:type:findingId. Note plan type field is `type`, spec's is `messageType`; plan wins.",
+    "Messages are at-least-once with no ordering guarantee across senders. The actor must dedupe on the idempotency tuple and reject stale revisions. This confirms the plan's 'idempotent messages, stale revision rejected' rule. In-memory dedupe is not sufficient because it resets on restart.",
+    "The plan must treat send success as enqueued only, not as processed. The live Relay feed on the office screen should render from actor-recorded events or a listener, and Relay reads remain non-authoritative, matching the plan rule.",
+    "Fallback rule: write to the actor first, then post to Relay with a 4 s timeout. Do not block the HTTP response on Relay. On failure mark the actor with relayPending and retry with the same idempotency key, never a fresh one. Set retryPolicy { maxRetries: 1 }. A timed-out post can still land, so receivers must tolerate it arriving after a retry.",
+    "For the demo fallback, keep a local or direct-call path that lets review proceed when Relay fails, and add an on('permanentlyDisconnected') style check or restart, since the socket stops for good after 30 failed attempts. Do not rely on Relay's own queueing: nothing is queued client-side when offline.",
+    "If apps/api runs under Bun with the actors, test the SDK under Bun in the hello-world, or run the Relay code in Node 22+. SDK support under Bun is unverified.",
+    "Do not assume a rate limit is safe. No numbers are published, so keep the review flow to a handful of messages per permit and avoid high-frequency status posts. The size limit for metadata and text is also unpublished, so send IDs and short summaries, not full plans or PII, in line with spec line 160.",
+    "Filter listeners by sender and type. Whether an agent receives its own posts is unverified, and the workspace listener sees all local identities' traffic."
+   ],
+   "codeSnippets": [
+    {
+     "title": "Applicant side: intake posts and listens for NEEDS_INPUT (tsc --strict clean, not run live)",
+     "source": "/private/tmp/claude-501/-Users-jsc-saichandu-github-stampede/1666b120-2e0e-4758-9f53-ad7d8abec5f2/scratchpad/research/relay/relay-applicant.ts",
+     "code": "import { AgentRelay } from '@agent-relay/sdk';\nimport { z } from 'zod';\n\nexport const Envelope = z.object({\n  permitId: z.string(),\n  revision: z.number().int(),\n  sender: z.string(),\n  type: z.enum(['REVIEW_REQUEST', 'FINDING', 'NEEDS_INPUT', 'REVISION_SUBMITTED', 'REVIEW_COMPLETE', 'PACKET_READY']),\n  findingId: z.string().optional(),\n  payload: z.record(z.string(), z.unknown()),\n  timestamp: z.string(),\n});\nexport type Envelope = z.infer<typeof Envelope>;\n\nconst relay = new AgentRelay({\n  workspaceKey: process.env.RELAY_WORKSPACE_KEY!,\n  baseUrl: process.env.RELAY_BASE_URL, // undefined means https://cast.agentrelay.com; ar_ws_ keys need armadillo\n  retryPolicy: { maxRetries: 1 },\n  onError: (err, ctx) => console.warn('[relay]', ctx, err),\n});\nconst intake = await relay.workspace.reconnect({ apiToken: process.env.RELAY_INTAKE_TOKEN! });\n\nconst channelOf = (permitId: string) => `permit-${permitId}`;\n\nexport async function openPermitChannel(permitId: string) {\n  await intake.channels.create({ name: channelOf(permitId), topic: `Permit ${permitId}` }).catch(() => {});\n  await intake.channels.join(channelOf(permitId));\n  for (const agent of ['clerk', 'building', 'zoning']) {\n    await intake.channels.invite(channelOf(permitId), agent).catch((err) => console.warn('[relay] invite', agent, err));\n  }\n}\n\nexport async function post(e: Omit<Envelope, 'sender' | 'timestamp'>): Promise<boolean> {\n  const envelope: Envelope = { ...e, sender: 'intake', timestamp: new Date().toISOString() };\n  try {\n    const sent = intake.sendMessage({\n      to: `#${channelOf(e.permitId)}`,\n      text: JSON.stringify(envelope),\n      metadata: envelope,\n      idempotencyKey: `${e.permitId}:${e.revision}:${e.type}:${e.findingId ?? '-'}`,\n    });\n    await Promise.race([sent, new Promise((_, no) => setTimeout(() => no(new Error('relay timeout')), 4000))]);\n    return true;\n  } catch (err) {\n    console.warn('[relay] post failed', err);\n    return false;\n  }\n}\n\nfunction readEnvelope(metadata: unknown, text: string): unknown {\n  if (metadata && typeof metadata === 'object' && 'type' in metadata) return metadata;\n  try {\n    return JSON.parse(text);\n  } catch {\n    return null;\n  }\n}\n\nconst seen = new Set<string>();\nexport function onNeedsInput(handler: (e: Envelope) => void | Promise<void>) {\n  return relay.addListener('message.created', async ({ message, envelope }) => {\n    if (!envelope.channel?.name?.startsWith('permit-')) return;\n    if (envelope.from?.name !== 'clerk' || seen.has(message.messageId)) return;\n    const parsed = Envelope.safeParse(readEnvelope(message.metadata, message.text));\n    if (!parsed.success || parsed.data.type !== 'NEEDS_INPUT') return;\n    seen.add(message.messageId);\n    await handler(parsed.data);\n  });\n}"
+    },
+    {
+     "title": "One-time registration; tokens are returned only here",
+     "source": "/private/tmp/claude-501/-Users-jsc-saichandu-github-stampede/1666b120-2e0e-4758-9f53-ad7d8abec5f2/scratchpad/research/relay/register-once.ts",
+     "code": "import { AgentRelay } from '@agent-relay/sdk';\nconst relay = new AgentRelay({ workspaceKey: process.env.RELAY_WORKSPACE_KEY!, baseUrl: process.env.RELAY_BASE_URL });\nfor (const name of ['intake', 'clerk', 'building', 'zoning']) {\n  const agent = await relay.workspace.register({ name, type: 'agent' });\n  console.log(`RELAY_${name.toUpperCase()}_TOKEN=${agent.token}`);\n}"
+    },
+    {
+     "title": "Core verbatim signatures (RelayWorkspace)",
+     "source": "pkg/package/dist/facade.d.ts",
+     "code": "register<T extends AgentLike | AgentLike[]>(agents: T, options?: RelayRegisterOptions): Promise<T extends AgentLike[] ? RelayAgentClient[] : RelayAgentClient>;\nreconnect(input: { apiToken: string; }): Promise<RelayAgentClient>;\nsendMessage(input: RelaySendMessageInput): Promise<RelayMessage>;"
+    }
+   ],
+   "artifacts": [
+    "/private/tmp/claude-501/-Users-jsc-saichandu-github-stampede/1666b120-2e0e-4758-9f53-ad7d8abec5f2/scratchpad/research/relay/relay-applicant.ts",
+    "/private/tmp/claude-501/-Users-jsc-saichandu-github-stampede/1666b120-2e0e-4758-9f53-ad7d8abec5f2/scratchpad/research/relay/register-once.ts",
+    "/private/tmp/claude-501/-Users-jsc-saichandu-github-stampede/1666b120-2e0e-4758-9f53-ad7d8abec5f2/scratchpad/research/relay/unreach.mjs",
+    "/private/tmp/claude-501/-Users-jsc-saichandu-github-stampede/1666b120-2e0e-4758-9f53-ad7d8abec5f2/scratchpad/research/relay/docs/full.txt",
+    "/private/tmp/claude-501/-Users-jsc-saichandu-github-stampede/1666b120-2e0e-4758-9f53-ad7d8abec5f2/scratchpad/research/relay/docs/relaycast-api.md",
+    "/private/tmp/claude-501/-Users-jsc-saichandu-github-stampede/1666b120-2e0e-4758-9f53-ad7d8abec5f2/scratchpad/research/relay/pkg/package/dist/facade.d.ts"
+   ]
+  },
+  {
+   "lane": "openai",
+   "summary": "Use client.responses.parse with zodTextFormat, store:false, reasoning.effort \"none\", and model gpt-6-luna (fallback gpt-6.1-terra), with openai@7.47.0 and zod@4.6.7, importing from \"zod\".\nThe spec's patch and confidence-map shape cannot go through strict mode: a record throws in the SDK. Each field becomes a {status,value,confidence} slot, where status is stated, user_unknown or not_mentioned. Code then rebuilds patch, confidence, unknownFields and missingFields, so the model no longer outputs missingFields.\nResend plain messages on each turn instead of using previous_response_id. Do not stream.\nOn incomplete or refusal, responses.parse does not throw. It returns output_parsed = null, so check status and the refusal content item. A schema failure throws ZodError.\nVerified offline: the schema compiles through zodTextFormat, and extractTurn passed a mocked HTTP run for success, refusal, incomplete, invalid JSON shape and 429.\nNOT verified: no live API call was made, so API acceptance of the schema and actual latency are unconfirmed. Run one real call as soon as the key exists.\nThe ledgerType enum values and all intent values except provide_project_details are placeholders I invented.",
+   "facts": [
+    {
+     "question": "Q1: Which call is recommended, and what are the imports?",
+     "answer": "openai.responses.parse with text.format: zodTextFormat(Schema, name), reading response.output_parsed. Imports: import OpenAI from \"openai\"; import { zodTextFormat } from \"openai/helpers/zod\"; import { z } from \"zod\". chat.completions.parse with zodResponseFormat still exists, but the guide's examples use Responses.",
+     "source": "Context7 /websites/developers_openai_api (structured-outputs guide); research/openai/pkg/openai-7.47.0/package/helpers/zod.d.mts",
+     "confidence": "documented"
+    },
+    {
+     "question": "Q2: Which versions are current, and is Zod 4 supported?",
+     "answer": "openai latest is 7.47.0; zod latest is 4.6.7. The openai peer range is zod \"^3.25 || ^4.0\". zodTextFormat detects v4 through the _zod property and uses z4.toJSONSchema. Importing from \"zod\" worked with a v4 schema here. Pin zod@4.6.7. @agent-relay/sdk@15.0.1 depends on zod ^4.4.3, so a single shared copy is possible.",
+     "source": "npm view openai version peerDependencies dist-tags; npm view zod version; npm view @agent-relay/sdk dependencies.zod; helpers/zod.mjs; check.mts run",
+     "confidence": "observed"
+    },
+    {
+     "question": "Q3: Which schema shapes fail locally in the SDK?",
+     "answer": ".optional() alone throws: 'uses .optional() without .nullable() which is not supported by the API'. z.record throws: 'must set additionalProperties: false'. .nullable().optional() passes and is emitted as required and nullable. .default('a') does NOT throw: it emits {default:'a'} and the field is required. Avoid .default(); whether the API rejects it is unverified. Use .nullable() only.",
+     "source": "check.mts run in research/openai/check; lib/transform.mjs:605",
+     "confidence": "observed"
+    },
+    {
+     "question": "Q3: What are the documented strict-mode limits?",
+     "answer": "All fields must be required. additionalProperties:false is required on every object. The root must be an object and not anyOf. Up to 5000 object properties, 10 nesting levels, 1000 enum values across all enums, and 120,000 total characters of names and enum values. minimum, maximum, exclusiveMinimum, exclusiveMaximum, multipleOf, minItems, maxItems, pattern and format are supported, except on fine-tuned models. allOf, not, dependentRequired, dependentSchemas, if, then and else are unsupported. anyOf is allowed below the root. Our schema compiles to 36 properties, all 10 objects closed and fully required, with minimum/maximum emitted on confidence.",
+     "source": "developers.openai.com/api/docs/guides/structured-outputs.md lines 3576-3864 (saved in research/openai/docs); check.mts run",
+     "confidence": "documented"
+    },
+    {
+     "question": "Q4: How should the shape be reshaped for strict mode?",
+     "answer": "Use one slot per field: {status: stated|user_unknown|not_mentioned, value: T|null, confidence: 0..1}. Fixed object keys replace the free-key confidence map. toPatch() rebuilds patch, the confidence map, unknownFields and missingFields in code. ledgerType counts as missing only when attached is stated true. The schema passed zodTextFormat and $parseRaw locally.",
+     "source": "research/openai/check/intake-schema.mts; mock.mts run (all pass)",
+     "confidence": "observed"
+    },
+    {
+     "question": "Q5: How do refusal and incomplete behave in responses.parse?",
+     "answer": "The Responses path does not throw on either. parseResponse parses only when status is completed, so incomplete gives output_parsed null and the code checks status plus incomplete_details.reason. A refusal is a message content item with type 'refusal' and also leaves output_parsed null. Mocks confirmed both.",
+     "source": "lib/ResponsesParser.mjs:111-160; mock.mts run",
+     "confidence": "observed"
+    },
+    {
+     "question": "Q5: Which errors are worth catching?",
+     "answer": "ZodError, thrown from parse when the schema does not match; the mock confirmed it for the bad-intent payload. SyntaxError is caught as a precaution but was not exercised. RateLimitError was mocked with a 429. APIConnectionTimeoutError and the APIError base are exported from openai and caught, but not exercised by the mock. LengthFinishReasonError and ContentFilterFinishReasonError come from the chat-completions path and do not apply to responses.parse.",
+     "source": "lib/parser.mjs:154-157; core/error.d.mts; mock.mts run; grep of lib/ResponsesParser.mjs and lib/responses/ResponseStream.mjs",
+     "confidence": "observed"
+    },
+    {
+     "question": "Q6: Which model should we use, and how fast is it?",
+     "answer": "Primary: gpt-6-luna ('most efficient model for focused, high-volume tasks', $0.10/$0.50 per MTok, structured_outputs listed). Set reasoning.effort 'none', because the default is medium. Fallback: gpt-6.1-terra ($1/$5, structured_outputs listed, also supports none). Expected latency is unverified: neither model page gives a figure. The guide's new-project recommendation is gpt-6-astra; I chose against it for speed and cost. Both ids appear in the SDK's model type. Luna's default-tier limit starts at 5,000 RPM on the Build tier.",
+     "source": "developers.openai.com/api/docs/models and models/gpt-6-luna.md lines 11,19,73 plus rate-limit table; models/gpt-6.1-terra.md:78; resources/shared.d.mts:75; structured-outputs.md:283",
+     "confidence": "documented"
+    },
+    {
+     "question": "Q6: Does first-call schema latency matter?",
+     "answer": "Yes. 'the first request you make with any schema will have additional latency as our API processes the schema, but subsequent requests with the same schema will not.' Fire one warm-up parse before the demo. The size of the extra latency is not stated.",
+     "source": "guides/structured-outputs.md:2432",
+     "confidence": "documented"
+    },
+    {
+     "question": "Q7: previous_response_id or resending messages?",
+     "answer": "Resend. Keep chat history next to the actor and send plain user/assistant text with store:false. previous_response_id needs store:true, which keeps Response objects for 30 days by default, so the homeowner's address would be retained. It also means persisting one more id, and prior input tokens are still billed. Resending keeps one source of truth and makes a model switch trivial. The docs' toResponseInputItems replay is not needed, because we send plain text turns rather than output items.",
+     "source": "guides/conversation-state.md:195-222, 554-575, 723-740; the store:false plain-text request body was seen in the mock, not against the live API",
+     "confidence": "documented"
+    },
+    {
+     "question": "Q8: Can we stream and still get the parsed object?",
+     "answer": "Yes: responses.stream with the same text.format, then await stream.finalResponse(), which runs the same parse step. But output_text deltas are raw JSON, not a readable reply, so showing nextQuestion early would need partial-JSON handling. Not worth it for a 3 minute demo. Show a typing indicator and render on completion.",
+     "source": "Context7 structured-outputs streaming snippet; lib/responses/ResponseStream.mjs:514-554",
+     "confidence": "documented"
+    },
+    {
+     "question": "What was not verified?",
+     "answer": "No live API call was made because no key was available. So API acceptance of the compiled schema, including the $schema key that the conversion leaves in it, is unverified, as are actual latency, luna's extraction accuracy with effort none, and key or tier access to the model.",
+     "source": "check.mts output; task rules (no API key)",
+     "confidence": "unverified"
+    }
+   ],
+   "planImpact": [
+    "Plan line 311 (ledgerType?, rearSetbackFt?, and the guard field) cannot be the model output schema, because strict mode rejects .optional(). apps/api/contracts.ts can keep the flat optional shape, but the LLM schema must be the slot version, with toPatch() as the bridge.",
+    "The spec's confidence map {\"deck.lengthFt\":0.96} (spec.txt:246) throws as z.record. It stays only as a derived value in code, never as model output.",
+    "Remove missingFields from model output and compute it in code (spec.txt:247). This supports plan line 377, 'The model never fills a missing value'.",
+    "Plan line 377 'Unknown stays UNKNOWN' needs a real representation. The record needs somewhere to keep user_unknown (toPatch returns unknownFields), distinct from unset, and Kris's rules and office screen must treat the two differently. Agree this in contracts.ts. Decide also whether a user_unknown required field blocks completion; my code leaves it in missingFields, so it does.",
+    "Pin in plan line 410: npm install @agent-relay/sdk zod@4.6.7 openai@7.47.0, and import from \"zod\".",
+    "Do not assume that responses.parse throws on refusal or truncation. Handle status and refusal content explicitly, and send a fixed fallback question to the applicant on any non-ok result, with no patch applied.",
+    "Set reasoning: {effort:'none'}, because luna defaults to medium. Make the model an env var (OPENAI_INTAKE_MODEL) so the fallback is a one-line change.",
+    "Add a warm-up parse at server start or just before the demo, because the first request with a new schema is slower.",
+    "Chat is non-streaming: POST /api/permits/:id/chat returns one JSON result and the UI shows a typing indicator.",
+    "Keep status out of the schema, which it is, so chat text cannot produce a status change (plan line 378). Add a prompt rule for off-topic input, since the docs warn the model may hallucinate on unrelated input; the off_topic intent carries this. Treat confidence as the model's own estimate, not a calibrated score.",
+    "Replace the placeholder values. The ledgerType enum (bolted_ledger, flashed_ledger, freestanding_no_ledger, other) and the intents other than provide_project_details are my inventions, not from the plan, spec or city terminology. Kris should confirm them before the rules depend on them. The REQUIRED list in the sample code is also my assumption, so align it with the plan's intake rules.",
+    "Run one real API call first once the key exists. It is the fastest way to confirm the schema is accepted, including the $schema key left in the compiled output."
+   ],
+   "codeSnippets": [
+    {
+     "title": "Strict intake schema and code-side reshape",
+     "code": "import { z } from \"zod\";\n\nconst slot = <T extends z.ZodType>(value: T) =>\n  z.object({\n    status: z.enum([\"stated\", \"user_unknown\", \"not_mentioned\"]),\n    value: value.nullable(),\n    confidence: z.number().min(0).max(1),\n  });\n\nconst IntakeTurn = z.object({\n  intent: z.enum([\"provide_project_details\", \"correct_details\", \"ask_question\", \"confirm_summary\", \"off_topic\"]),\n  address: slot(z.string()),\n  deck: z.object({\n    lengthFt: slot(z.number()),\n    widthFt: slot(z.number()),\n    maxHeightIn: slot(z.number()),\n    attached: slot(z.boolean()),\n    ledgerType: slot(z.enum([\"bolted_ledger\", \"flashed_ledger\", \"freestanding_no_ledger\", \"other\"])),\n    rearSetbackFt: slot(z.number()),\n    guardHeightIn: slot(z.number()),\n  }),\n  nextQuestion: z.string().nullable(),\n  requiresConfirmation: z.boolean(),\n});\nexport type IntakeTurn = z.infer<typeof IntakeTurn>;\nexport { IntakeTurn };\n\nconst REQUIRED = [\"address\", \"deck.lengthFt\", \"deck.widthFt\", \"deck.maxHeightIn\", \"deck.attached\", \"deck.rearSetbackFt\"] as const;\n\n// Rebuilds the plan's flat shape in code, so the model cannot disagree with itself.\nexport function toPatch(t: IntakeTurn) {\n  const slots: Record<string, { status: string; value: unknown; confidence: number }> = { address: t.address };\n  for (const [k, s] of Object.entries(t.deck)) slots[`deck.${k}`] = s;\n  const patch: Record<string, unknown> = {};\n  const confidence: Record<string, number> = {};\n  const unknownFields: string[] = [];\n  for (const [path, s] of Object.entries(slots)) {\n    if (s.status === \"user_unknown\") unknownFields.push(path);\n    if (s.status === \"stated\" && s.value !== null) { patch[path] = s.value; confidence[path] = s.confidence; }\n  }\n  const required: string[] = [...REQUIRED];\n  if (t.deck.attached.status === \"stated\" && t.deck.attached.value === true) required.push(\"deck.ledgerType\");\n  const missingFields = required.filter((path) => slots[path].status !== \"stated\" || slots[path].value === null);\n  return { patch, confidence, unknownFields, missingFields };\n}",
+     "source": "/private/tmp/claude-501/-Users-jsc-saichandu-github-stampede/1666b120-2e0e-4758-9f53-ad7d8abec5f2/scratchpad/research/openai/check/intake-schema.mts (compiled through zodTextFormat; mock.mts passes)"
+    },
+    {
+     "title": "Parse call with refusal, incomplete and error handling",
+     "code": "import OpenAI, { APIConnectionTimeoutError, APIError, RateLimitError } from \"openai\";\nimport { zodTextFormat } from \"openai/helpers/zod\";\nimport { ZodError } from \"zod\";\nimport { IntakeTurn } from \"./intake-schema.mts\";\n\nexport type ChatMessage = { role: \"user\" | \"assistant\"; content: string };\nexport type IntakeResult =\n  | { ok: true; turn: IntakeTurn }\n  | { ok: false; reason: \"refused\" | \"incomplete\" | \"invalid\" | \"busy\" | \"unavailable\"; detail?: string };\n\nconst MODEL = process.env.OPENAI_INTAKE_MODEL ?? \"gpt-6-luna\";\nconst format = zodTextFormat(IntakeTurn, \"intake_turn\");\n\nexport async function extractTurn(client: OpenAI, instructions: string, messages: ChatMessage[]): Promise<IntakeResult> {\n  try {\n    const res = await client.responses.parse(\n      {\n        model: MODEL,\n        store: false,\n        instructions,\n        input: messages,\n        reasoning: { effort: \"none\" },\n        max_output_tokens: 1200,\n        text: { format },\n      },\n      { timeout: 15_000, maxRetries: 1 },\n    );\n    if (res.status === \"incomplete\") return { ok: false, reason: \"incomplete\", detail: res.incomplete_details?.reason };\n    for (const item of res.output) {\n      if (item.type !== \"message\") continue;\n      for (const c of item.content) if (c.type === \"refusal\") return { ok: false, reason: \"refused\", detail: c.refusal };\n    }\n    return res.output_parsed ? { ok: true, turn: res.output_parsed } : { ok: false, reason: \"invalid\" };\n  } catch (e) {\n    if (e instanceof ZodError || e instanceof SyntaxError) return { ok: false, reason: \"invalid\", detail: e.message };\n    if (e instanceof RateLimitError) return { ok: false, reason: \"busy\" };\n    if (e instanceof APIConnectionTimeoutError || e instanceof APIError) return { ok: false, reason: \"unavailable\", detail: e.message };\n    throw e;\n  }\n}",
+     "source": "/private/tmp/claude-501/-Users-jsc-saichandu-github-stampede/1666b120-2e0e-4758-9f53-ad7d8abec5f2/scratchpad/research/openai/check/intake-call.mts (mock HTTP only, no live API call)"
+    }
+   ],
+   "artifacts": [
+    "/private/tmp/claude-501/-Users-jsc-saichandu-github-stampede/1666b120-2e0e-4758-9f53-ad7d8abec5f2/scratchpad/research/openai/check/intake-schema.mts",
+    "/private/tmp/claude-501/-Users-jsc-saichandu-github-stampede/1666b120-2e0e-4758-9f53-ad7d8abec5f2/scratchpad/research/openai/check/intake-call.mts",
+    "/private/tmp/claude-501/-Users-jsc-saichandu-github-stampede/1666b120-2e0e-4758-9f53-ad7d8abec5f2/scratchpad/research/openai/check/mock.mts",
+    "/private/tmp/claude-501/-Users-jsc-saichandu-github-stampede/1666b120-2e0e-4758-9f53-ad7d8abec5f2/scratchpad/research/openai/check/check.mts",
+    "/private/tmp/claude-501/-Users-jsc-saichandu-github-stampede/1666b120-2e0e-4758-9f53-ad7d8abec5f2/scratchpad/research/openai/docs/guides_structured-outputs.md"
+   ]
+  },
+  {
+   "lane": "sj-rules",
+   "summary": "Nothing here blocks the demo: the 42 in guard correction is right, and five wording or logic fixes are needed.\nACCESS: every live sanjoseca.gov URL returned 403 (Akamai bot block) to curl with a browser UA and to WebFetch, as did Municode and the ICC chapter page via WebFetch. I did not get past that block. City text below comes from Wayback snapshots (dated per fact) and CRC text from the UpCodes mirror, so nothing was read live from the city. No live 200 was confirmed for any form link.\n1. Permit trigger: the plan's list is incomplete. The Decks page has FIVE conditions; the plan omits \"The deck serves as a door landing\" and \"at any point\". Operators >= 200 sq ft and >= 30 in are right. The demo deck triggers on attached and on 36 in; area does not trigger (192 < 200).\n2. Guard: 42 in is CORRECT for California, no number change. Precise cites: 2025 CRC R321.1.1 (where required) and R321.1.2 (height); 2022 had the same text at R312.1.1 and R312.1.2. The 36 in figure is the national IRC per search results (IRC text not fetched). Permit trigger is >= 30 in, guard trigger is > 30 in: keep them different.\n3. Filing: apply at SJPermits, then upload to SJePlans, via the Standard Plan Review Service. sjeplans.sanjoseca.gov does not resolve; do not link it.\n4. Required docs: Project Plans (Form 352), Form 310, Form 351. The Decks page's Form 351 URL differs from the one in the task; use the Decks page URL.\n5. Setback: the Decks page says nothing. Controlling sources are SJMC Ch. 20.30, Table 20-60 (\u00a720.30.200) and \u00a720.30.400, neither read in current form. Table 20-70's \"None\" covers accessory structures, and Bulletin #250 defines those as detached, so do not apply it to the attached demo deck.\n6. San Jose 2025 local amendments were NOT retrieved: the link returned the 2022 ordinance. Do not claim \"no San Jose amendment\".",
+   "facts": [
+    {
+     "question": "Access: could the live city sources be read?",
+     "answer": "No. All 7 task URLs on www.sanjoseca.gov returned 403 'Access Denied' (Akamai, errors.edgesuite.net) to curl with a Chrome UA. WebFetch returned 403 on the 4 HTML pages tried. Municode (curl and WebFetch) and ICC chapter 3 (WebFetch) also returned 403. ICC via curl returned 200 but only a JS stub with no code text. Wayback snapshots were used instead.",
+     "source": "curl -sL -A Chrome UA, raw/ directory; WebFetch results; Reference #18.10a7cb17.1793473658.24886285",
+     "confidence": "observed"
+    },
+    {
+     "question": "1. Exact permit trigger wording",
+     "answer": "Verbatim: 'A deck installation, replacement, or repair requires a building permit if any of these conditions apply: Deck is 200 sq. ft. or greater / Deck is 30\" or more above ground at any point / Deck is attached to a dwelling / The deck serves a required exit door / The deck serves as a door landing'. Five conditions, page marked 'Updated: 03/23/2026'. The plan's >= operators are exact; it omits the door-landing clause and 'at any point'.",
+     "source": "https://web.archive.org/web/20260513141119/https://www.sanjoseca.gov/businesses/development-services-permit-center/start-your-project/single-family-duplex-properties/decks (raw/decks.html.txt:118-123)",
+     "confidence": "documented"
+    },
+    {
+     "question": "1b. Does the demo deck (attached, 16 x 12 ft, 36 in) trigger a permit?",
+     "answer": "Yes, on two conditions: attached to a dwelling, and 36 in is 30 in or more. Area does not trigger it (192 sq ft is under 200). Exit door and door landing are unknown from the demo facts.",
+     "source": "Decks page conditions applied to plan.txt:209",
+     "confidence": "inferred"
+    },
+    {
+     "question": "2. Guard: where required (2025 CRC)",
+     "answer": "R321.1.1 verbatim: 'Guards shall be provided for those portions of open-sided walking surfaces, including floors, stairs, ramps and landings that are located more than 30 inches (762 mm) measured vertically to the floor or grade below at any point within 36 inches (914 mm) horizontally to the edge of the open side.' The 2022 CRC R312.1.1 text is identical.",
+     "source": "https://up.codes/viewer/california/ca-residential-code-2025/chapter/3/building-planning (raw/u25.txt:9833-9835); same for 2022 (raw/u22.txt:5760-5762). UpCodes mirror, not ICC.",
+     "confidence": "documented"
+    },
+    {
+     "question": "2b. Guard height for one- and two-family dwellings",
+     "answer": "42 in is correct. R321.1.2 verbatim: 'Required guards at open-sided walking surfaces, including stairs, porches, balconies or landings, shall be not less than 42 inches (1067 mm) in height as measured vertically above the adjacent walking surface or the line connecting the nosings.' Exceptions: open sides of stairs 'not less than 34 inches (864 mm)' from the nosing line; where the guard top serves as a handrail on stairs, 34 to 38 in. 2022 CRC R312.1.2 has identical text. Search results attribute 36 in to the national IRC; IRC text was not fetched.",
+     "source": "raw/u25.txt:9837-9845, raw/u22.txt:5764-5772 (UpCodes). A web search summary reported the same 42 in sentence on ICC CARC2025P1 ch. 3; ICC page text not read directly.",
+     "confidence": "documented"
+    },
+    {
+     "question": "2c. California or San Jose amendment on guard height",
+     "answer": "California: the 2025 errata matrix adoption table lists R321 under SFM and R321.1.2 separately under HCD column 1 by text alignment; UpCodes italicizes '42 inches (1067 mm)'. That indicates a California amendment, but the agency attribution rests on column alignment only. San Jose: 2022 ORD 30837 has zero 'guard' or 'deck' matches and lists no Chapter 3 exclusion in the excerpt read. The 2025 San Jose amendments were not retrieved: the page's '2025' link (113792/638594217164900000) returned ORD 30837 (2022) in its 2025-02-18 Wayback capture. A third-party mirror cites Ords. 28838 and 31256 for Ch. 24.09 and describes the 2025 edition; not verified.",
+     "source": "https://www.iccsafe.org/wp-content/uploads/errata_central/2025-California-Residential-Code-Part-2.5-Errata-eff.-January-2026.pdf (raw/errata25.txt:374-375); raw/ord.txt:12-28,251,646-655; gocodebook.com Ch. 24.09 via search summary",
+     "confidence": "unverified"
+    },
+    {
+     "question": "2d. City source on guards and code edition",
+     "answer": "Form #352 (11/05/2024), item 49: 'Provide 42\" minimum high guard rails at balconies and porches greater than 30\" above finished grade, which is measured as much as 3 feet out... Provide structural details and calculations per CRC R312.' This agrees on 42 in, but its R312 cite predates the 2025 renumbering. Under the 2025 code R312 is Minimum Room Areas. Adopted codes page: 'Effective Jan. 1, 2026, the 2025 state building codes have replaced the 2022 codes.'",
+     "source": "Wayback 20241111071534 of Form 352 (raw/f352.txt:160-162); raw/u25.txt:61,79; Wayback 20260318183710 of adopted codes (raw/codes.html.txt:230-237)",
+     "confidence": "documented"
+    },
+    {
+     "question": "3. Real filing path and URLs",
+     "answer": "Decks page: 'Use the Standard Plan Review Service.' and 'You will first apply at SJPermits and then upload documents through SJePlans.' Apply: https://www.sjpermits.org/ (200; redirects to https://sjpermits.org/permits/online-permits.html). Application Wizard: https://portal.sanjoseca.gov/deployed/sfjsp?interviewID=ApplicationWiz (200). Log in or register: https://portal.sanjoseca.gov/deployed/sfjsp?interviewID=Login (linked from SJPermits, status not checked). Standard Plan Review instructions: https://www.sanjoseca.gov/businesses/development-services-permit-center/building-permit-services/standard-plan-review. SJePlans info: https://www.sanjoseca.gov/business/development-services-permit-center/sjeplans-electronic-plan-submittal-review. No public SJePlans login URL was found; 'SJPermits will auto-email the ePlan Applicant with the steps to create an account in SJePlans.' A guessed host, sjeplans.sanjoseca.gov, did not resolve.",
+     "source": "curl status checks; raw/decks.html.txt:160-163; Wayback 20260517001223 of standard-plan-review (raw/spr.html.txt:193-210); raw/sjp_online.html.txt:148-163",
+     "confidence": "observed"
+    },
+    {
+     "question": "4. Required documents for a residential deck",
+     "answer": "REQUIRED, quoted: '> Project Plans - See Plan Set Instructions' (Form 352); '> Building Permit Application' (Form 310); '> Single-Family & Duplex Projects Submittal Checklist - Under Project Scope, check \"Other\" and enter \"Deck\"' (Form 351). IF APPLICABLE: Geologic Hazard Clearance, Grading Permit Application, Historic Preservation Permit/Adjustment/Amendment, Owner-Builder Acknowledgement ('Submit if the property owner is the permit applicant (not recommended)'), Tree Removal Permit Application, and possibly a refundable Construction and Demolition Diversion Deposit.",
+     "source": "raw/decks.html.txt:143-157",
+     "confidence": "documented"
+    },
+    {
+     "question": "4b. Do the three form links return 200?",
+     "answer": "Not confirmed. All three returned 403 live from this environment, which is a site-wide bot block and says nothing about a normal browser. Wayback copies return PDFs: Form 310 (capture 20260210), Form 351 (capture 20260911, form dated 07/26/2024), Form 352 (capture 20241111, dated 11/05/2024, may be stale). The Decks page links Form 351 at /home/showpublisheddocument/107046/638576746001800000, not the task's 638356733348200000; both captures are PDFs and the Decks page URL capture is also dated 07/26/2024.",
+     "source": "curl -w http_code; raw/f310.pdf, raw/f351.pdf, raw/f351b.pdf, raw/f352.pdf; raw/decks.html.txt:143-147",
+     "confidence": "observed"
+    },
+    {
+     "question": "5. Does a city source state a rear setback for decks in R-1-8?",
+     "answer": "No deck-specific rear setback was found. The Decks page has 0 occurrences of 'setback'. Design Considerations: 'The zoning district of the project location outlines required setbacks...' and sends the reader to 'Residential Development Standards (Table 20-60)', Municode nodeId TIT20ZO_CH20.30REZODI_PT3DERE_20.30.200DEST. That table returned 403 and was not read. ORD 31095 has 0 'deck' matches.",
+     "source": "Wayback 20260617154112 of Design Considerations (raw/design.html.txt:183-187); grep -c on raw/decks.html.txt and raw/w31095.txt",
+     "confidence": "documented"
+    },
+    {
+     "question": "5b. Related setback sources for the exact missing-source citation",
+     "answer": "Name as unverified: San Jose Municipal Code Title 20, Chapter 20.30, \u00a720.30.200 Table 20-60, and \u00a720.30.400 (setback projections; Form 352 cites it, and the portions read in ORD 31095 do not mention decks). Context only, not a ruling on decks: a Planning handout on \u00a720.30.280 lists 'R-1-8 20'' as the rear yard setback in the additions context; Table 20-70 (\u00a720.30.500) lists rear setback 'None' for 'All other accessory buildings and structures', Notes 2, 3, 8; Bulletin #250 says accessory structures 'are open air structures detached from the main dwelling unit'. The demo deck is attached. Whether Table 20-60 or an encroachment rule governs an attached deck is unverified.",
+     "source": "Wayback copies: 108273 handout (raw/w108273.txt:2-19), ORD 31095 (raw/w31095.txt:196-300), Bulletin 250 (raw/w15445.txt)",
+     "confidence": "documented"
+    },
+    {
+     "question": "6. City text on easements, PD and historic flags for intake",
+     "answer": "Easements: 'Is an easement on the property? If yes, typically, you cannot build within the easement.' and 'If you are submitting plans and have an easement, you must show the easement on the project plans.' PD: 'Is the property located in a Planned Development (PD) Zone? If yes, you must adhere to the architectural standards of the PD Zone and any HOA CCR rules.' Historic: 'Is the house or site listed on the City's Historic Resources Inventory? If yes, your request for a building permit will include a review by a City planner.' Also on the page: flood zone, geologic or seismic hazard zone, tree removal.",
+     "source": "raw/design.html.txt:120-125,127-136,147-158,167-169",
+     "confidence": "documented"
+    }
+   ],
+   "planImpact": [
+    "SJ-PERMIT-01 (plan.txt:215-218): add the fifth condition 'The deck serves as a door landing', and word height as '30\" or more above ground at any point'. Scope covers 'installation, replacement, or repair'. Demo result stays permit required, on attached and height, not area.",
+    "CRC-GUARD-01 (plan.txt:220-228): keep 42 in; no number change. Cite 2025 CRC R321.1.1 and R321.1.2, because plans submitted after Jan 1, 2026 are reviewed under the 2025 codes. Add the 'at any point within 36 inches horizontally to the edge of the open side' measurement to the logic.",
+    "Truthful on-screen correction: 'Guard 36 in. 2025 CRC R321.1.2 requires not less than 42 in where the walking surface is more than 30 in above grade (R321.1.1).' The stated reason must not claim San Jose set this number.",
+    "Keep the two height operators separate: the permit trigger is >= 30 in, the guard trigger is > 30 in. A deck at exactly 30 in needs a permit but does not trigger the guard rule. Do not share one constant.",
+    "The guard rule must not apply 42 in to stair guards: R321.1.2 has exceptions at 34 in and 34 to 38 in from the nosing line. If Kris's rule sees stairs, scope it to open-sided deck walking surfaces only.",
+    "Do not quote Form 352's 'CRC R312' as the current section: under the 2025 code R312 is Minimum Room Areas. Do not show any claim that San Jose has no local amendment; the 2025 ordinance was not retrieved.",
+    "SJ-ZONING-01: do not read Table 20-70's rear setback of 'None' as a pass for the demo deck, and do not use 20 ft as a deck rule. Bulletin #250 defines accessory structures as detached and the demo deck is attached. The stated 4 ft rear setback stays NEEDS HUMAN VERIFICATION.",
+    "Suggested finding text: 'Rear setback for an attached deck in R-1-8 not verified. Check San Jose Municipal Code Ch. 20.30, Table 20-60 (\u00a720.30.200) and \u00a720.30.400 with a City planner.'",
+    "Packet filing link: primary https://www.sjpermits.org/, with the Application Wizard URL and the Standard Plan Review page as secondary links. Say 'apply at SJPermits, then upload to SJePlans'. Do not invent an SJePlans login URL; the city emails account steps to the ePlan Applicant.",
+    "Packet still-required list: Project Plans (Form 352), Building Permit Application (Form 310), Submittal Checklist (Form 351) with note to check 'Other' and enter 'Deck'. Use the Decks page's Form 351 URL ending 638576746001800000, not the one in the task.",
+    "Before the demo, a person must open the sanjoseca.gov decks page, the three form links and the Standard Plan Review page in a normal browser. This environment could not confirm any of them live. The app must not server-side fetch sanjoseca.gov at demo time, since it may hit the same block. Open these with the sjpermits.org links, which did respond from here.",
+    "Intake should ask four yes/no flags from Design Considerations: easement, PD zone, Historic Resources Inventory, and tree removal; optionally flood or geologic hazard. Unknown answers should map to NEEDS INFORMATION. Easements must be shown on plans, so the packet should carry that line.",
+    "The plan's 'Forms 310 / 351 / 352: linked from the Decks page' (plan.txt:421) is confirmed, and its 'Adopted building codes (2025 cycle)' is confirmed. The 16 x 12 = 192 sq ft arithmetic is right."
+   ],
+   "codeSnippets": [
+    {
+     "title": "Permit trigger, verbatim",
+     "code": "A deck installation, replacement, or repair requires a building permit if any of these conditions apply:\nDeck is 200 sq. ft. or greater\nDeck is 30\" or more above ground at any point\nDeck is attached to a dwelling\nThe deck serves a required exit door\nThe deck serves as a door landing",
+     "source": "San Jose Decks page, Wayback 20260513141119, page dated 03/23/2026"
+    },
+    {
+     "title": "Guard height, verbatim",
+     "code": "R321.1.2 Height\nRequired guards at open-sided walking surfaces, including stairs, porches, balconies or landings, shall be not less than 42 inches (1067 mm) in height as measured vertically above the adjacent walking surface or the line connecting the nosings.",
+     "source": "2025 California Residential Code via UpCodes mirror; 2022 R312.1.2 identical"
+    },
+    {
+     "title": "Filing path, verbatim",
+     "code": "This service uses online platforms. You will first apply at SJPermits and then upload documents through SJePlans. A City plan reviewer will review the plans and send comments to the ePlan Applicant through SJePlans.",
+     "source": "San Jose Decks page, Wayback 20260513141119"
+    }
+   ],
+   "artifacts": [
+    "/private/tmp/claude-501/-Users-jsc-saichandu-github-stampede/1666b120-2e0e-4758-9f53-ad7d8abec5f2/scratchpad/research/sj-rules/raw/decks.html.txt",
+    "/private/tmp/claude-501/-Users-jsc-saichandu-github-stampede/1666b120-2e0e-4758-9f53-ad7d8abec5f2/scratchpad/research/sj-rules/raw/design.html.txt",
+    "/private/tmp/claude-501/-Users-jsc-saichandu-github-stampede/1666b120-2e0e-4758-9f53-ad7d8abec5f2/scratchpad/research/sj-rules/raw/codes.html.txt",
+    "/private/tmp/claude-501/-Users-jsc-saichandu-github-stampede/1666b120-2e0e-4758-9f53-ad7d8abec5f2/scratchpad/research/sj-rules/raw/spr.html.txt",
+    "/private/tmp/claude-501/-Users-jsc-saichandu-github-stampede/1666b120-2e0e-4758-9f53-ad7d8abec5f2/scratchpad/research/sj-rules/raw/sjp_online.html.txt",
+    "/private/tmp/claude-501/-Users-jsc-saichandu-github-stampede/1666b120-2e0e-4758-9f53-ad7d8abec5f2/scratchpad/research/sj-rules/raw/u25.txt",
+    "/private/tmp/claude-501/-Users-jsc-saichandu-github-stampede/1666b120-2e0e-4758-9f53-ad7d8abec5f2/scratchpad/research/sj-rules/raw/u22.txt",
+    "/private/tmp/claude-501/-Users-jsc-saichandu-github-stampede/1666b120-2e0e-4758-9f53-ad7d8abec5f2/scratchpad/research/sj-rules/raw/errata25.txt",
+    "/private/tmp/claude-501/-Users-jsc-saichandu-github-stampede/1666b120-2e0e-4758-9f53-ad7d8abec5f2/scratchpad/research/sj-rules/raw/ord.txt",
+    "/private/tmp/claude-501/-Users-jsc-saichandu-github-stampede/1666b120-2e0e-4758-9f53-ad7d8abec5f2/scratchpad/research/sj-rules/raw/w31095.txt",
+    "/private/tmp/claude-501/-Users-jsc-saichandu-github-stampede/1666b120-2e0e-4758-9f53-ad7d8abec5f2/scratchpad/research/sj-rules/raw/w15445.txt",
+    "/private/tmp/claude-501/-Users-jsc-saichandu-github-stampede/1666b120-2e0e-4758-9f53-ad7d8abec5f2/scratchpad/research/sj-rules/raw/w108273.txt",
+    "/private/tmp/claude-501/-Users-jsc-saichandu-github-stampede/1666b120-2e0e-4758-9f53-ad7d8abec5f2/scratchpad/research/sj-rules/raw/f310.pdf",
+    "/private/tmp/claude-501/-Users-jsc-saichandu-github-stampede/1666b120-2e0e-4758-9f53-ad7d8abec5f2/scratchpad/research/sj-rules/raw/f351.pdf",
+    "/private/tmp/claude-501/-Users-jsc-saichandu-github-stampede/1666b120-2e0e-4758-9f53-ad7d8abec5f2/scratchpad/research/sj-rules/raw/f351b.pdf",
+    "/private/tmp/claude-501/-Users-jsc-saichandu-github-stampede/1666b120-2e0e-4758-9f53-ad7d8abec5f2/scratchpad/research/sj-rules/raw/f352.pdf"
+   ]
+  },
+  {
+   "lane": "guard-independent",
+   "summary": "ANSWER: 42 inches minimum, not 36. Guard height is 2025 California Residential Code (Title 24 Part 2.5) R321.1.2. A guard is required under R321.1.1 where an open-sided walking surface is more than 30 inches above the floor or grade below, at any point within 36 inches horizontally of the open edge.\nOpen sides of stairs: 34 in minimum, or 34-38 in where the guard top is also the handrail.\nDecks reach this through R507.10, because R321.1.1's list does not say \"decks\".\nEdition: the 2025 CRC applies to permit applications submitted on or after 2026-01-01 (BSC Bulletin 25-01, H&SC 18938.5). The prior edition, 2022 CRC, says the same thing at R312.1.1 / R312.1.2.\nNumbering: R321 comes from the 2024 IRC, which shows guards at R321 on two state pages. In the 2025 CRC, R312 is now Minimum Room Areas, so citing R312 for a 2026 permit is wrong.\nCalifornia amendment: the 2024 IRC says 36 in and the CRC says 42 in. That is why generic \"36 in\" sources are wrong for California.\nSan Jose: no guard amendment found. Part 2 of Chapter 24.09 (CRC Chapter 3) touches only R301.2 and R309. I read the 10/16/2025 draft ordinance, not final Ord. 31256.\nCBC: 1015.2 / 1015.3 give the same 30/36 trigger and 42 in, but the CRC governs a single-family dwelling.\nConfidence: high on 42 in, R321 and the trigger (mirrored code text plus government handouts agree); medium-high on no San Jose amendment. ICC, Municode, sanjoseca.gov and final Ord. 31256 all returned 403, so the code text comes from third-party mirrors. I saved no report file; downloaded sources are in the lane dl/ directory.",
+   "facts": [
+    {
+     "question": "What is the minimum guard height for a new residential deck on a San Jose single-family dwelling in 2026?",
+     "answer": "42 inches (1067 mm). 2025 CRC R321.1.2, verbatim: \"Required guards at open-sided walking surfaces, including stairs, porches, balconies or landings, shall be not less than 42 inches (1067 mm) in height as measured vertically above the adjacent walking surface or the line connecting the nosings.\" Exceptions: (1) \"Guards on the open sides of stairs shall have a height of not less than 34 inches (864 mm) measured vertically from a line connecting the nosings.\" (2) \"Where the top of the guard serves as a handrail on the open sides of stairs, the top of the guard shall be not less than 34 inches (864 mm) and not more than 38 inches (965 mm) as measured vertically from a line connecting the nosings.\"",
+     "source": "https://up.codes/viewer/california/ca-residential-code-2025/chapter/3/building-planning (third-party mirror, fetched 2026-10-31; saved dl/upcodes_crc25.txt line 6716). Height wording also reproduced at https://gocodebook.com/library/us/ca/ca-residential-code/chapter-3-building-planning/section-r321-guards-and-window-fall-protection, which identifies itself as the 2025 CRC.",
+     "confidence": "documented"
+    },
+    {
+     "question": "When is a guard required?",
+     "answer": "2025 CRC R321.1.1, verbatim: \"Guards shall be provided for those portions of open-sided walking surfaces, including floors, stairs, ramps and landings that are located more than 30 inches (762 mm) measured vertically to the floor or grade below at any point within 36 inches (914 mm) horizontally to the edge of the open side. Insect screening shall not be considered as a guard.\" The trigger is strictly more than 30 in, and it is measured to the floor or grade at any point within 36 in of the edge, not only directly below the edge.",
+     "source": "https://up.codes/viewer/california/ca-residential-code-2025/chapter/3/building-planning (dl/upcodes_crc25.txt line 6716)",
+     "confidence": "documented"
+    },
+    {
+     "question": "How do deck rules connect to R321, given that R321.1.1 does not list decks?",
+     "answer": "2025 CRC R507.10 (Exterior Guards), verbatim: \"Guards shall be constructed to meet the requirements of Sections R301.5 and R321, and this section.\" R507.1 states \"Wood-framed decks shall be in accordance with this section.\" These quotes were returned by WebFetch's page summarizer, not extracted by me from the saved HTML.",
+     "source": "https://up.codes/viewer/california/ca-residential-code-2025/chapter/5/floors (WebFetch offset 100000)",
+     "confidence": "documented"
+    },
+    {
+     "question": "Which edition governs on 2026-10-31?",
+     "answer": "The 2025 California Building Standards Code, including Part 2.5 CRC. BSC Bulletin 25-01: \"January 1, 2026, is the statewide effective date for the 2025 California Building Standards Code\" and \"all applications for building permits submitted on or after January 1, 2026, are subject to compliance with the 2025 California Building Standards Code.\" The 2022 code still applies to applications submitted before that date. San Jose's Chapter 24.09.100 adopts the CRC 2025 edition, based on the draft ordinance dated 10/16/2025.",
+     "source": "https://www.dgs.ca.gov/-/media/Divisions/BSC/06-News/Information-Bulletins/2025/BSC-Bulletin-25-01-FINAL.pdf (dl/bsc2501.txt:28-31); Council Item 8.2(a) draft ordinance https://sanjose.legistar.com/View.ashx?M=F&ID=14873777&GUID=DD05D7FB-2583-4C0D-BC97-EE5FB907BE34 (dl/sj_ord_a.txt:1379-1385)",
+     "confidence": "observed"
+    },
+    {
+     "question": "What are the section numbers in the prior edition?",
+     "answer": "2022 CRC R312.1.1 (Where Required) and R312.1.2 (Height). The wording is the same as the 2025 text, including 42 inches and the 34 in / 34-38 in stair exceptions. The 2016 CRC R312.1.2 also says 42 inches, using \"leading edges of the treads\" instead of \"nosings\".",
+     "source": "https://up.codes/viewer/california/ca-residential-code-2022/chapter/3/building-planning (dl/upcodes_crc22.txt line 3281); https://inspectapedia.com/Stairs/2016-CRC-Section-R312-Guards-Window-Falls-CA.pdf (dl/crc2016.txt:72-76)",
+     "confidence": "documented"
+    },
+    {
+     "question": "Where does the move from R312 to R321 come from?",
+     "answer": "It comes from the model code, not California. UpCodes pages for the 2024 New Jersey One- and Two-Family Subcode and the Georgia Residential Code 2024 both show R321 Guards and Window Fall Protection and R312 Minimum Room Areas. The 2025 CRC has the same numbering, so R312.1 is now \"Minimum Area\" for habitable rooms. The base 2024 IRC itself was not read directly.",
+     "source": "https://up.codes/viewer/new_jersey/irc-2024/chapter/3/building-planning and https://up.codes/viewer/georgia/irc-2024/chapter/3/building-planning (dl/up_nj.html, dl/up_ga.html, extracted in-memory)",
+     "confidence": "inferred"
+    },
+    {
+     "question": "Is 42 inches a California amendment?",
+     "answer": "Yes, by inference. The 2024 IRC-based state pages read \"not less than 36 inches (914 mm)\", while the CRC reads 42 inches. The UpCodes CRC HTML wraps only \"42 inches (1067 mm)\" in a u-italic span, consistent with Title 24's use of italics for California amendments. I did not read the Chapter 3 adoption matrix or an HCD statement of reasons. HCD's 2024-cycle 45-day express terms, matrix and ISOR for Part 2.5 returned no R312, R321 or guard-provision hits (grep), which suggests the amendment carried forward unchanged, but that is also an inference.",
+     "source": "dl/up_nj.html; dl/up_ga.html; dl/upcodes_crc25.html (span near R321.1.2); dl/hcd_et.docx.txt, dl/hcd_cam.docx.txt, dl/hcd_isor2.txt",
+     "confidence": "inferred"
+    },
+    {
+     "question": "Does San Jose amend the guard height or trigger?",
+     "answer": "No amendment found. The staff memo says \"There are no new proposed amendments for this code cycle\" and that Chapter 24.09 adopts the CRC with local amendments. The draft ordinance changes only 24.09.100, .110, .110.5, .111, .225 (R301.2 table) and .240 (R309 sprinklers) within Chapter 24.09. The GoCodebook list for Part 2 (CRC Chapter 3) shows only 24.09.210 Findings, .220 Reserved, .225, .230 Reserved and .240. Part 3 is titled Braced Wall Panels (CRC Chapter 6). None concerns guards. The 24.09 Part 2 list comes from a third party, and Part 3's full text was not read.",
+     "source": "Memo dated 2025-10-06, pp.3-4 https://sanjose.legistar.com/View.ashx?GUID=5B67CA9F-ECD6-400A-8F37-A9C62C9A8D3E&ID=14870483&M=F (dl/sj_memo.txt:147-176); dl/sj_ord_a.txt:1373-1490; https://gocodebook.com/library/us/ca/san-jose-zoning/title-24/chapter-24.09/part-2-building-planning-crc-chapter-3",
+     "confidence": "inferred"
+    },
+    {
+     "question": "Which San Jose ordinance adopted the 2025 codes?",
+     "answer": "Ordinance No. 31256, amending Title 24, is listed in the 2025-11-18 council minutes. No. 31255 is Chapter 10.54 of Title 10 and No. 31257 covers Chapters 24.10 and 24.12. One search summary attributed 31255 to Title 24, and the minutes contradict that. The final ordinance text was not read.",
+     "source": "https://sanjose.legistar.com/View.ashx?GUID=3B4D3A81-760B-4ACF-912B-14389B67DC8E&ID=15019413&M=F (dl/sj_minutes.txt:108-144)",
+     "confidence": "observed"
+    },
+    {
+     "question": "How does the CBC differ from the CRC on this question?",
+     "answer": "For this question the numbers match; the governing code differs. 2025 CBC 1015.2 uses the same more-than-30-in / within-36-in trigger, and 1015.3 reads \"Required guards shall be not less than 42 inches (1067 mm) high\". Its Group R-3 exceptions are limited to the open sides of stairs: 34 in, or 34-38 in where the guard serves as a handrail. Other differences are the section numbers and non-dwelling items in the CBC, such as occupiable roofs, mezzanines, and exceptions for stages and loading docks. The CRC is the governing code for a single-family dwelling; its scope is taken from secondary sources (Santa Cruz IB-900 applicability line and search results), since R101.2 / 1.1.3 was not read.",
+     "source": "https://up.codes/viewer/california/ca-building-code-2025/chapter/10/means-of-egress (dl/up_cbc25.txt, extracted by regex); dl/scruz.txt line 7 area",
+     "confidence": "documented"
+    },
+    {
+     "question": "Handout 1: Berkeley, cites 2025 CRC",
+     "answer": "Verbatim: \"Guards shall be located along open sides of walking surfaces including decks, porches, landings, stairs, ramps that are located more than 30 inches measured vertically to the floor or grade below at any point within 36 inches horizontally if the edge of the open side. [CRC R321.1.1]\" and \"Guards shall be not less than 42 inches high measured vertically above the walking surface, adjacent walking surface or the line connecting the leading edges of the treads. Guards on the open side of stairs shall have a height not less than 34 inches measured vertically from a line connecting the leading edges of treads. [CRC R321.1.2]\". Document footer: Last Revised 03/19/26. The page states that its numbers refer to the 2025 edition.",
+     "source": "https://berkeleyca.gov/sites/default/files/documents/160%20CCC%20-%20Decks%2C%20Porches%20and%20Stairs.pdf (downloaded from the dev.berkeleyca.gov mirror of the same path; dl/berkeley.txt:109-116, 55)",
+     "confidence": "observed"
+    },
+    {
+     "question": "Handout 2: Gilroy, Santa Clara County, prior-edition numbering",
+     "answer": "Verbatim: \"The height of required guards at open walking surfaces is 42 inches.\" and \"Guards on the open side of stairs shall have a height of not less than 34 inches\". Section heading: \"CRC R312.1\". Footer: Revised: 03/03/2025. This predates the 2025 CRC, so it still uses R312.",
+     "source": "https://cityofgilroy.org/DocumentCenter/View/12314/Residential-Stairs-Handrails-and-Guards-Handout (dl/gilroy.txt:122-128, 143)",
+     "confidence": "observed"
+    },
+    {
+     "question": "Supporting handouts",
+     "answer": "Santa Cruz County IB-900, no date found in extraction: \"Guards shall be not less than 42 inches high measured vertically above the walking surface or the line connecting the leading edges of the treads.\" Roseville, Revised 01/08/2018: \"A guard is required when the deck is over 30 inches in height.\" and \"Guards must be a minimum of 42 inches in height.\" Dublin cites the 2025 CBC, not the CRC: \"The top of guards shall be a minimum height of 42 inches.\"",
+     "source": "https://cdi.santacruzcountyca.gov/Portals/35/CDI/UnifiedPermitCenter/Building/Forms%20&%20Publications/IB%20Publications/Deck%20Construction_IB900.pdf (dl/scruz.txt:118); https://www.roseville.ca.gov/Documents/Development%20Services/Applications%20Forms%20and%20Handouts/Building/Handouts/Raised%20Decks%20and%20Guardrail%20Requirements.pdf (dl/roseville.txt:17-18, 41); https://dublin.ca.gov/DocumentCenter/View/79/Guardrails-and-Handrails (dl/dublin.txt:2-9)",
+     "confidence": "observed"
+    },
+    {
+     "question": "Do sources conflict, and which governs?",
+     "answer": "Yes. A GoCodebook blog post and a Melt Plan article, as summarized by search, give 36 in for California. Generic IRC deck guides also give 36 in. The 36 in figure matches the model IRC, which California amends, and the mirrored CRC text plus four government handouts say 42 in. The adopted code text governs, so 42 in stands. The blog and article pages themselves were not opened; only the search summaries were read.",
+     "source": "WebSearch results for the 36-in claims; compared against the CRC facts above",
+     "confidence": "inferred"
+    },
+    {
+     "question": "Is there a San Jose deck handout?",
+     "answer": "Unverified. None was found. sanjoseca.gov returned 403 to curl, and a targeted search returned no San Jose handout. San Jose's own adopted-codes page was seen only through a search summary.",
+     "source": "curl of the Building Division adopted-building-codes URL (403); WebSearch",
+     "confidence": "unverified"
+    },
+    {
+     "question": "Could a deck be exempt from a San Jose permit and still need a guard?",
+     "answer": "Related but separate rule. The draft ordinance exempts \"Decks, in Group R-3 occupancy, not exceeding 200 square feet in area, that are not more than 30 inches above grade at any point, are not attached to a dwelling and do not serve the required exit door.\" The section number was not confirmed, and the final text was not read. This is a permit rule, not a guard rule, and it uses a different test from R321.1.1.",
+     "source": "dl/sj_ord_a.txt:457-459 (draft, 10/16/2025)",
+     "confidence": "observed"
+    },
+    {
+     "question": "What could not be accessed?",
+     "answer": "ICC Digital Codes CARC2025P1 and CARC2022P3: 403 to curl, and 403 to WebFetch for the 2025 page. Municode San Jose and its API: 403 / Cloudflare challenge. sanjoseca.gov Building Division page: 403. Final Ord. 31256 at records.sanjoseca.gov: 403. HCD 45-day ISOR URL: 404. The base 2024 IRC was not read directly. An official BSC copy of Part 2.5 was not fetched. All code text is therefore from third-party mirrors, not an official publication, though city handouts corroborate it.",
+     "source": "curl and WebFetch runs in this session, 2026-10-31",
+     "confidence": "observed"
+    }
+   ],
+   "planImpact": [
+    "Encode the guard height as 42 inches. Any plan, rule, fixture or demo text that uses 36 inches for a San Jose single-family deck is wrong: 36 is the model IRC value. plan.txt was not read for this lane, so whether it says this must be checked by whoever reconciles the lanes.",
+    "Cite CRC R321.1.1 and R321.1.2 for applications submitted on or after 2026-01-01. Do not cite R312.1.2 for those: in the 2025 CRC, R312 is Minimum Room Areas. Use R312.1.x only for 2022-edition applications submitted before that date. The height is 42 in under both.",
+    "Trigger logic is strict: guard required only when the drop is more than 30 in. Exactly 30 in does not trigger it.",
+    "Measure the drop to the floor or grade at any point within 36 in horizontally of the open edge. Deck height at the edge alone is not enough, because sloping grade can trigger a guard on a low deck. If intake collects only one deck height, the rule must flag that it cannot fully decide the trigger.",
+    "Compliance is height at or above 42 in, measured from the adjacent walking surface. Handle stairs separately: 34 in minimum on open sides, or 34-38 in where the guard top is also the handrail. Do not apply 42 in to stair guards or 34 in to the deck surface.",
+    "Link the deck rule to R507.10, which points to R321, because R321.1.1 does not name decks.",
+    "Do not cite the CBC (1015.2/1015.3) as the governing code for a single-family dwelling. Do not treat Dublin's CBC handout as CRC evidence.",
+    "Do not claim a San Jose local guard amendment, and do not claim a verified absence of one from the final ordinance. Say: none found in the 10/16/2025 draft Ord. 31256 text or the published Chapter 24.09 Part 2 section list.",
+    "Keep the permit exemption separate from the guard rule. The draft exemption covers detached R-3 decks of 200 sq ft or less, 30 in or less above grade at any point, not serving the required exit door. Being exempt from a permit is not the same test as R321.1.1.",
+    "Do not present a San Jose deck handout as a source: none was found. Do not label UpCodes or GoCodebook as official code text."
+   ],
+   "codeSnippets": [
+    {
+     "title": "2025 CRC R321.1.1 and R321.1.2 (rule text to cite)",
+     "code": "R321.1.1 Where Required: Guards shall be provided for those portions of open-sided walking surfaces, including floors, stairs, ramps and landings that are located more than 30 inches (762 mm) measured vertically to the floor or grade below at any point within 36 inches (914 mm) horizontally to the edge of the open side. Insect screening shall not be considered as a guard.\n\nR321.1.2 Height: Required guards at open-sided walking surfaces, including stairs, porches, balconies or landings, shall be not less than 42 inches (1067 mm) in height as measured vertically above the adjacent walking surface or the line connecting the nosings.",
+     "source": "https://up.codes/viewer/california/ca-residential-code-2025/chapter/3/building-planning (third-party mirror; saved at dl/upcodes_crc25.txt line 6716)"
+    }
+   ],
+   "artifacts": [
+    "/private/tmp/claude-501/-Users-jsc-saichandu-github-stampede/1666b120-2e0e-4758-9f53-ad7d8abec5f2/scratchpad/research/guard-independent/dl/upcodes_crc25.txt",
+    "/private/tmp/claude-501/-Users-jsc-saichandu-github-stampede/1666b120-2e0e-4758-9f53-ad7d8abec5f2/scratchpad/research/guard-independent/dl/upcodes_crc22.txt",
+    "/private/tmp/claude-501/-Users-jsc-saichandu-github-stampede/1666b120-2e0e-4758-9f53-ad7d8abec5f2/scratchpad/research/guard-independent/dl/up_cbc25.txt",
+    "/private/tmp/claude-501/-Users-jsc-saichandu-github-stampede/1666b120-2e0e-4758-9f53-ad7d8abec5f2/scratchpad/research/guard-independent/dl/sj_ord_a.txt",
+    "/private/tmp/claude-501/-Users-jsc-saichandu-github-stampede/1666b120-2e0e-4758-9f53-ad7d8abec5f2/scratchpad/research/guard-independent/dl/sj_memo.txt",
+    "/private/tmp/claude-501/-Users-jsc-saichandu-github-stampede/1666b120-2e0e-4758-9f53-ad7d8abec5f2/scratchpad/research/guard-independent/dl/sj_minutes.txt",
+    "/private/tmp/claude-501/-Users-jsc-saichandu-github-stampede/1666b120-2e0e-4758-9f53-ad7d8abec5f2/scratchpad/research/guard-independent/dl/bsc2501.txt",
+    "/private/tmp/claude-501/-Users-jsc-saichandu-github-stampede/1666b120-2e0e-4758-9f53-ad7d8abec5f2/scratchpad/research/guard-independent/dl/berkeley.txt",
+    "/private/tmp/claude-501/-Users-jsc-saichandu-github-stampede/1666b120-2e0e-4758-9f53-ad7d8abec5f2/scratchpad/research/guard-independent/dl/gilroy.txt"
+   ]
+  }
+ ],
+ "dropped": []
+}

@@ -1,0 +1,81 @@
+{
+ "spatialReference": {
+  "wkid": 4326,
+  "latestWkid": 4326
+ },
+ "candidates": [
+  {
+   "address": "2039 Kammerer Ave, San Jose, California, 95116",
+   "location": {
+    "x": -121.842832500002,
+    "y": 37.352250000001
+   },
+   "score": 100,
+   "attributes": {
+    "Status": "M",
+    "Score": 100,
+    "Match_addr": "2039 Kammerer Ave, San Jose, California, 95116",
+    "LongLabel": "2039 Kammerer Ave, San Jose, CA, 95116",
+    "ShortLabel": "2039 Kammerer Ave",
+    "Addr_type": "PointAddress",
+    "Type": "",
+    "PlaceName": "",
+    "Place_addr": "2039 Kammerer Ave, San Jose, California, 95116",
+    "Phone": "",
+    "URL": "",
+    "Rank": 20,
+    "AddBldg": "",
+    "AddNum": "2039",
+    "AddNumFrom": "",
+    "AddNumTo": "",
+    "AddRange": "",
+    "Side": "",
+    "StPreDir": "",
+    "StPreType": "",
+    "StName": "Kammerer",
+    "StType": "Ave",
+    "StDir": "",
+    "BldgType": "",
+    "BldgName": "",
+    "LevelType": "",
+    "LevelName": "",
+    "UnitType": "",
+    "UnitName": "",
+    "SubAddr": "",
+    "StAddr": "2039 Kammerer Ave",
+    "Block": "",
+    "Sector": "",
+    "Nbrhd": "",
+    "District": "",
+    "City": "San Jose",
+    "MetroArea": "",
+    "Subregion": "Santa Clara",
+    "Region": "California",
+    "RegionAbbr": "CA",
+    "Territory": "",
+    "Zone": "",
+    "Postal": "95116",
+    "PostalExt": "",
+    "Country": "",
+    "CntryName": "US",
+    "LangCode": "ENG",
+    "Distance": 0,
+    "X": 6171367.8014420215,
+    "Y": 1953527.4385890607,
+    "DisplayX": 6171367.8014420215,
+    "DisplayY": 1953527.4385890607,
+    "Xmin": 6171071.937059081,
+    "Xmax": 6171663.658089347,
+    "Ymin": 1953167.5444431726,
+    "Ymax": 1953887.3359699438,
+    "ExInfo": ""
+   },
+   "extent": {
+    "xmin": -121.843868058221,
+    "ymin": 37.351250000001,
+    "xmax": -121.841796995628,
+    "ymax": 37.353250000001
+   }
+  }
+ ]
+}

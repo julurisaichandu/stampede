@@ -1,0 +1,129 @@
+{
+ "displayFieldName": "ZONINGABBREV",
+ "fieldAliases": {
+  "OBJECTID": "OBJECTID",
+  "FACILITYID": "Facility Identifier",
+  "INTID": "Integer ID",
+  "ZONING": "Zoning",
+  "ZONINGABBREV": "Zoning Abbreviation",
+  "REZONINGFILE": "Rezoning File",
+  "PDUSE": "PD Use",
+  "PDDENSITY": "PD Density",
+  "DEVELOPEDASPD": "Developed as PD",
+  "APPROVALDATE": "Approval Date",
+  "COLORCODE": "Color Code",
+  "LASTUPDATE": "Last Update Date",
+  "NOTES": "Notes",
+  "SHAPE_Length": "SHAPE_Length",
+  "SHAPE_Area": "SHAPE_Area"
+ },
+ "fields": [
+  {
+   "name": "OBJECTID",
+   "type": "esriFieldTypeOID",
+   "alias": "OBJECTID"
+  },
+  {
+   "name": "FACILITYID",
+   "type": "esriFieldTypeString",
+   "alias": "Facility Identifier",
+   "length": 50
+  },
+  {
+   "name": "INTID",
+   "type": "esriFieldTypeInteger",
+   "alias": "Integer ID"
+  },
+  {
+   "name": "ZONING",
+   "type": "esriFieldTypeString",
+   "alias": "Zoning",
+   "length": 15
+  },
+  {
+   "name": "ZONINGABBREV",
+   "type": "esriFieldTypeString",
+   "alias": "Zoning Abbreviation",
+   "length": 15
+  },
+  {
+   "name": "REZONINGFILE",
+   "type": "esriFieldTypeString",
+   "alias": "Rezoning File",
+   "length": 20
+  },
+  {
+   "name": "PDUSE",
+   "type": "esriFieldTypeString",
+   "alias": "PD Use",
+   "length": 15
+  },
+  {
+   "name": "PDDENSITY",
+   "type": "esriFieldTypeString",
+   "alias": "PD Density",
+   "length": 20
+  },
+  {
+   "name": "DEVELOPEDASPD",
+   "type": "esriFieldTypeString",
+   "alias": "Developed as PD",
+   "length": 3
+  },
+  {
+   "name": "APPROVALDATE",
+   "type": "esriFieldTypeDate",
+   "alias": "Approval Date",
+   "length": 8
+  },
+  {
+   "name": "COLORCODE",
+   "type": "esriFieldTypeString",
+   "alias": "Color Code",
+   "length": 2
+  },
+  {
+   "name": "LASTUPDATE",
+   "type": "esriFieldTypeDate",
+   "alias": "Last Update Date",
+   "length": 8
+  },
+  {
+   "name": "NOTES",
+   "type": "esriFieldTypeString",
+   "alias": "Notes",
+   "length": 255
+  },
+  {
+   "name": "SHAPE_Length",
+   "type": "esriFieldTypeDouble",
+   "alias": "SHAPE_Length"
+  },
+  {
+   "name": "SHAPE_Area",
+   "type": "esriFieldTypeDouble",
+   "alias": "SHAPE_Area"
+  }
+ ],
+ "features": [
+  {
+   "attributes": {
+    "OBJECTID": 11123,
+    "FACILITYID": "11123",
+    "INTID": 11123,
+    "ZONING": "R-1-8",
+    "ZONINGABBREV": "R-1-8",
+    "REZONINGFILE": null,
+    "PDUSE": null,
+    "PDDENSITY": "0",
+    "DEVELOPEDASPD": null,
+    "APPROVALDATE": null,
+    "COLORCODE": "1",
+    "LASTUPDATE": 1650663900000,
+    "NOTES": null,
+    "SHAPE_Length": 7312.759134129354,
+    "SHAPE_Area": 696305.123474019
+   }
+  }
+ ]
+}

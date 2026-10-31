@@ -1,0 +1,81 @@
+{
+ "spatialReference": {
+  "wkid": 4326,
+  "latestWkid": 4326
+ },
+ "candidates": [
+  {
+   "address": "14630 Noble Ave, San Jose, California, 95132",
+   "location": {
+    "x": -121.838022000002,
+    "y": 37.393866000001
+   },
+   "score": 100,
+   "attributes": {
+    "Status": "M",
+    "Score": 100,
+    "Match_addr": "14630 Noble Ave, San Jose, California, 95132",
+    "LongLabel": "14630 Noble Ave, San Jose, CA, 95132",
+    "ShortLabel": "14630 Noble Ave",
+    "Addr_type": "PointAddress",
+    "Type": "",
+    "PlaceName": "",
+    "Place_addr": "14630 Noble Ave, San Jose, California, 95132",
+    "Phone": "",
+    "URL": "",
+    "Rank": 20,
+    "AddBldg": "",
+    "AddNum": "14630",
+    "AddNumFrom": "",
+    "AddNumTo": "",
+    "AddRange": "",
+    "Side": "",
+    "StPreDir": "",
+    "StPreType": "",
+    "StName": "Noble",
+    "StType": "Ave",
+    "StDir": "",
+    "BldgType": "",
+    "BldgName": "",
+    "LevelType": "",
+    "LevelName": "",
+    "UnitType": "",
+    "UnitName": "",
+    "SubAddr": "",
+    "StAddr": "14630 Noble Ave",
+    "Block": "",
+    "Sector": "",
+    "Nbrhd": "",
+    "District": "",
+    "City": "San Jose",
+    "MetroArea": "",
+    "Subregion": "Santa Clara",
+    "Region": "California",
+    "RegionAbbr": "CA",
+    "Territory": "",
+    "Zone": "",
+    "Postal": "95132",
+    "PostalExt": "",
+    "Country": "",
+    "CntryName": "US",
+    "LangCode": "ENG",
+    "Distance": 0,
+    "X": 6172982.541577332,
+    "Y": 1968658.423664577,
+    "DisplayX": 6172982.541577332,
+    "DisplayY": 1968658.423664577,
+    "Xmin": 6172686.85757779,
+    "Xmax": 6173278.217841108,
+    "Ymin": 1968298.5111623732,
+    "Ymax": 1969018.3394042603,
+    "ExInfo": ""
+   },
+   "extent": {
+    "xmin": -121.839057452498,
+    "ymin": 37.392866000001,
+    "xmax": -121.836986601381,
+    "ymax": 37.394866000001
+   }
+  }
+ ]
+}

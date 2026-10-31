@@ -1,0 +1,52 @@
+{
+ "displayFieldName": "PARCELID",
+ "fieldAliases": {
+  "OBJECTID": "OBJECTID",
+  "PARCELID": "Parcel ID (GIS ID)",
+  "APN": "Assessors Parcel Number",
+  "LOTNUM": "Lot Number",
+  "ENTERPRISEID": "Enterprise ID"
+ },
+ "fields": [
+  {
+   "name": "OBJECTID",
+   "type": "esriFieldTypeOID",
+   "alias": "OBJECTID"
+  },
+  {
+   "name": "PARCELID",
+   "type": "esriFieldTypeString",
+   "alias": "Parcel ID (GIS ID)",
+   "length": 20
+  },
+  {
+   "name": "APN",
+   "type": "esriFieldTypeString",
+   "alias": "Assessors Parcel Number",
+   "length": 30
+  },
+  {
+   "name": "LOTNUM",
+   "type": "esriFieldTypeString",
+   "alias": "Lot Number",
+   "length": 20
+  },
+  {
+   "name": "ENTERPRISEID",
+   "type": "esriFieldTypeString",
+   "alias": "Enterprise ID",
+   "length": 20
+  }
+ ],
+ "features": [
+  {
+   "attributes": {
+    "OBJECTID": 43625,
+    "PARCELID": "45671",
+    "APN": "26110009",
+    "LOTNUM": null,
+    "ENTERPRISEID": "DPW-PARC-0000045671"
+   }
+  }
+ ]
+}

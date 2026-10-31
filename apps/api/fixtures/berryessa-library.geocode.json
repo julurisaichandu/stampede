@@ -1,0 +1,81 @@
+{
+ "spatialReference": {
+  "wkid": 4326,
+  "latestWkid": 4326
+ },
+ "candidates": [
+  {
+   "address": "3311 Noble Ave, San Jose, California, 95132",
+   "location": {
+    "x": -121.840969500002,
+    "y": 37.394091000001
+   },
+   "score": 100,
+   "attributes": {
+    "Status": "M",
+    "Score": 100,
+    "Match_addr": "3311 Noble Ave, San Jose, California, 95132",
+    "LongLabel": "3311 Noble Ave, San Jose, CA, 95132",
+    "ShortLabel": "3311 Noble Ave",
+    "Addr_type": "PointAddress",
+    "Type": "",
+    "PlaceName": "",
+    "Place_addr": "3311 Noble Ave, San Jose, California, 95132",
+    "Phone": "",
+    "URL": "",
+    "Rank": 20,
+    "AddBldg": "",
+    "AddNum": "3311",
+    "AddNumFrom": "",
+    "AddNumTo": "",
+    "AddRange": "",
+    "Side": "",
+    "StPreDir": "",
+    "StPreType": "",
+    "StName": "Noble",
+    "StType": "Ave",
+    "StDir": "",
+    "BldgType": "",
+    "BldgName": "",
+    "LevelType": "",
+    "LevelName": "",
+    "UnitType": "",
+    "UnitName": "",
+    "SubAddr": "",
+    "StAddr": "3311 Noble Ave",
+    "Block": "",
+    "Sector": "",
+    "Nbrhd": "",
+    "District": "",
+    "City": "San Jose",
+    "MetroArea": "",
+    "Subregion": "Santa Clara",
+    "Region": "California",
+    "RegionAbbr": "CA",
+    "Territory": "",
+    "Zone": "",
+    "Postal": "95132",
+    "PostalExt": "",
+    "Country": "",
+    "CntryName": "US",
+    "LangCode": "ENG",
+    "Distance": 0,
+    "X": 6172127.541766635,
+    "Y": 1968752.5941193583,
+    "DisplayX": 6172127.541766635,
+    "DisplayY": 1968752.5941193583,
+    "Xmin": 6171831.847306881,
+    "Xmax": 6172423.228490734,
+    "Ymin": 1968392.690912444,
+    "Ymax": 1969112.5005640024,
+    "ExInfo": ""
+   },
+   "extent": {
+    "xmin": -121.842005029722,
+    "ymin": 37.393091000001,
+    "xmax": -121.839934024158,
+    "ymax": 37.395091000001
+   }
+  }
+ ]
+}

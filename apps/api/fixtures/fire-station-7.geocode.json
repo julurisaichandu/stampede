@@ -1,0 +1,81 @@
+{
+ "spatialReference": {
+  "wkid": 4326,
+  "latestWkid": 4326
+ },
+ "candidates": [
+  {
+   "address": "800 Emory St, San Jose, California, 95126",
+   "location": {
+    "x": -121.916691000002,
+    "y": 37.341288000001
+   },
+   "score": 100,
+   "attributes": {
+    "Status": "M",
+    "Score": 100,
+    "Match_addr": "800 Emory St, San Jose, California, 95126",
+    "LongLabel": "800 Emory St, San Jose, CA, 95126",
+    "ShortLabel": "800 Emory St",
+    "Addr_type": "PointAddress",
+    "Type": "",
+    "PlaceName": "",
+    "Place_addr": "800 Emory St, San Jose, California, 95126",
+    "Phone": "",
+    "URL": "",
+    "Rank": 20,
+    "AddBldg": "",
+    "AddNum": "800",
+    "AddNumFrom": "",
+    "AddNumTo": "",
+    "AddRange": "",
+    "Side": "",
+    "StPreDir": "",
+    "StPreType": "",
+    "StName": "Emory",
+    "StType": "St",
+    "StDir": "",
+    "BldgType": "",
+    "BldgName": "",
+    "LevelType": "",
+    "LevelName": "",
+    "UnitType": "",
+    "UnitName": "",
+    "SubAddr": "",
+    "StAddr": "800 Emory St",
+    "Block": "",
+    "Sector": "",
+    "Nbrhd": "",
+    "District": "",
+    "City": "San Jose",
+    "MetroArea": "",
+    "Subregion": "Santa Clara",
+    "Region": "California",
+    "RegionAbbr": "CA",
+    "Territory": "",
+    "Zone": "",
+    "Postal": "95126",
+    "PostalExt": "",
+    "Country": "",
+    "CntryName": "US",
+    "LangCode": "ENG",
+    "Distance": 0,
+    "X": 6149841.548832689,
+    "Y": 1949853.0922819057,
+    "DisplayX": 6149841.548832689,
+    "DisplayY": 1949853.0922819057,
+    "Xmin": 6149545.357867749,
+    "Xmax": 6150137.732064563,
+    "Ymin": 1949493.4325811756,
+    "Ymax": 1950212.7552229813,
+    "ExInfo": ""
+   },
+   "extent": {
+    "xmin": -121.917728482463,
+    "ymin": 37.340288000001,
+    "xmax": -121.915653571392,
+    "ymax": 37.342288000001
+   }
+  }
+ ]
+}
